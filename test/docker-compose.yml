@@ -1,0 +1,12 @@
+version: '3.3'
+name: "gomsvc"
+services:
+  mongodb:
+    image: mongo:6.0.3
+    hostname: mongodb
+    ports:
+      - "27017:27017"
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: "root"
+      MONGO_INITDB_ROOT_PASSWORD: "mypassword"
+    restart: on-failure

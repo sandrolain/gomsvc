@@ -19,7 +19,6 @@ func loadData[T any](ctx *fiber.Ctx, dest *T) error {
 	if err := ctx.ParamsParser(dest); err != nil {
 		return err
 	}
-
 	tagName := "req"
 	sv := reflect.ValueOf(dest)
 	if sv.Kind() == reflect.Ptr {

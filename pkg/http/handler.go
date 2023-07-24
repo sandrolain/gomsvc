@@ -4,7 +4,7 @@ import (
 	"github.com/gofiber/fiber/v2"
 )
 
-type DataHandler[T any] func(*T, *Route, *fiber.Ctx) error
+type DataHandler[T any] func(*T, *fiber.Ctx) error
 
 func Data[T any](handler DataHandler[T]) Handler {
 	return func(r *Route, c *fiber.Ctx) *RouteError {
@@ -31,7 +31,7 @@ func Data[T any](handler DataHandler[T]) Handler {
 		}
 
 		// Handle request
-		if err := handler(&obj, r, c); err != nil {
+		if err := handler(&obj, c); err != nil {
 			return InternalServerError(c, err)
 		}
 

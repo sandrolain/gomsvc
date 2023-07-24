@@ -25,18 +25,15 @@ func main() {
 
 func server() {
 
-	app := h.New(h.Config{
-		ValidateData: true,
-		AuthorizationFunc: func(ctx *fiber.Ctx) error {
-			fmt.Printf("ctx: %v\n", ctx)
-			if _, ok := ctx.GetReqHeaders()["X-Token"]; !ok {
-				return fmt.Errorf("Un-auth")
-			}
-			return nil
-		},
+	h.Authorize(func(ctx *fiber.Ctx) error {
+		fmt.Printf("ctx: %v\n", ctx)
+		if _, ok := ctx.GetReqHeaders()["X-Token"]; !ok {
+			return fmt.Errorf("Un-auth")
+		}
+		return nil
 	})
 
-	app.FilterError(func(re *h.RouteError) *h.RouteError {
+	h.FilterError(func(re *h.RouteError) *h.RouteError {
 		fmt.Printf("re: %v\n", re)
 		if re.Status == 400 {
 			errors := re.Error.(validator.ValidationErrors)
@@ -46,12 +43,13 @@ func server() {
 		return re
 	})
 
-	app.With("POST /hello").Handle(h.Data(func(d *models.HelloData, r *h.Route, c *fiber.Ctx) error {
+	h.Post("/hello", func(d *models.HelloData, c *fiber.Ctx) error {
 		fmt.Printf("d: %+v\n", d)
 		c.JSON(d)
 		return nil
-	}))
-	app.Listen(":3000")
+	})
+
+	h.Listen(":3000")
 }
 
 type Car struct {

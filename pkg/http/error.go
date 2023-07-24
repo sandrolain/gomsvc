@@ -9,9 +9,10 @@ type RouteError struct {
 	Ctx    *fiber.Ctx
 }
 
-type RouteErrorFilter func(*RouteError) *RouteError
+type ErrorFilterFunc func(*RouteError) *RouteError
 
 type ValidationFunc func(ctx *fiber.Ctx) error
+type AuthorizationFunc func(ctx *fiber.Ctx) error
 
 func InternalServerError(ctx *fiber.Ctx, err error) *RouteError {
 	return &RouteError{

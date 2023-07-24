@@ -17,6 +17,7 @@ func New(config Config, fiberConfig ...fiber.Config) *Server {
 		validateData:      config.ValidateData,
 		validationFunc:    config.ValidationFunc,
 		authorizationFunc: config.AuthorizationFunc,
+		errorFilter:       config.ErrorFilterFunc,
 	}
 	return &server
 }
@@ -24,15 +25,16 @@ func New(config Config, fiberConfig ...fiber.Config) *Server {
 type Config struct {
 	ValidateData      bool
 	ValidationFunc    ValidationFunc
-	AuthorizationFunc ValidationFunc
+	AuthorizationFunc AuthorizationFunc
+	ErrorFilterFunc   ErrorFilterFunc
 }
 
 type Server struct {
 	app               *fiber.App
-	errorFilter       *RouteErrorFilter
+	errorFilter       ErrorFilterFunc
 	validateData      bool
 	validationFunc    ValidationFunc
-	authorizationFunc ValidationFunc
+	authorizationFunc AuthorizationFunc
 }
 
 type Route struct {
@@ -41,7 +43,7 @@ type Route struct {
 	Path              string
 	Router            *fiber.Router
 	validationFunc    ValidationFunc
-	authorizationFunc ValidationFunc
+	authorizationFunc AuthorizationFunc
 	validate          *validator.Validate
 }
 
@@ -52,8 +54,13 @@ type RequestData struct {
 type Handler func(*Route, *fiber.Ctx) *RouteError
 
 // FilterError allow to define the errors filter function
-func (s *Server) FilterError(filter RouteErrorFilter) *Server {
-	s.errorFilter = &filter
+func (s *Server) FilterError(filter ErrorFilterFunc) *Server {
+	s.errorFilter = filter
+	return s
+}
+
+func (s *Server) Authorize(fn AuthorizationFunc) *Server {
+	s.authorizationFunc = fn
 	return s
 }
 
@@ -84,9 +91,8 @@ func getValidate(s *Server) (v *validator.Validate) {
 	return
 }
 
-func (s *Server) With(parts ...string) *Route {
-	method, path := parsePath(parts...)
-	return &Route{
+func (s *Server) Handle(method string, path string, handler Handler) *Route {
+	r := &Route{
 		server:            s,
 		Method:            method,
 		Path:              path,
@@ -94,26 +100,12 @@ func (s *Server) With(parts ...string) *Route {
 		validationFunc:    s.validationFunc,
 		authorizationFunc: s.authorizationFunc,
 	}
-}
 
-// Valid allow to define the validation function
-func (r *Route) Valid(fn ValidationFunc) *Route {
-	r.validationFunc = fn
-	return r
-}
-
-// Auth allow to define the authorization function
-func (r *Route) Auth(fn ValidationFunc) *Route {
-	r.authorizationFunc = fn
-	return r
-}
-
-func (r *Route) Handle(handler Handler) *Route {
 	router := r.server.app.Add(r.Method, r.Path, func(ctx *fiber.Ctx) error {
 		if routeErr := handler(r, ctx); routeErr != nil {
 			routeErr.Ctx = ctx
 			if r.server.errorFilter != nil {
-				routeErr = (*r.server.errorFilter)(routeErr)
+				routeErr = r.server.errorFilter(routeErr)
 			}
 			ctx.Status(routeErr.Status)
 			if len(routeErr.Body) > 0 {
@@ -124,6 +116,18 @@ func (r *Route) Handle(handler Handler) *Route {
 		return nil
 	})
 	r.Router = &router
+	return r
+}
+
+// Valid allow to define the validation function
+func (r *Route) Valid(fn ValidationFunc) *Route {
+	r.validationFunc = fn
+	return r
+}
+
+// Auth allow to define the authorization function
+func (r *Route) Auth(fn AuthorizationFunc) *Route {
+	r.authorizationFunc = fn
 	return r
 }
 

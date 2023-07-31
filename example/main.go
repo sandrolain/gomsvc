@@ -9,13 +9,25 @@ import (
 	"github.com/sandrolain/gomscv/example/models"
 	s "github.com/sandrolain/gomscv/example/service"
 	"github.com/sandrolain/gomscv/pkg/client"
+	"github.com/sandrolain/gomscv/pkg/env"
 	h "github.com/sandrolain/gomscv/pkg/http"
 	"github.com/sandrolain/gomscv/pkg/repo"
 	"go.mongodb.org/mongo-driver/bson/primitive"
 )
 
+type Config struct {
+	Port int `env:"PORT" validate:"required"`
+}
+
+var cfg Config
+
 func main() {
-	go server()
+	cfg := Config{}
+	env.GetEnv(&cfg)
+	fmt.Printf("cfg: %v\n", cfg)
+
+	go server(cfg)
+
 	time.Sleep(time.Second)
 	go httpClient()
 
@@ -23,7 +35,7 @@ func main() {
 	<-run
 }
 
-func server() {
+func server(cfg Config) {
 
 	h.Authorize(func(ctx *fiber.Ctx) error {
 		fmt.Printf("ctx: %v\n", ctx)
@@ -49,7 +61,7 @@ func server() {
 		return nil
 	})
 
-	h.Listen(":3000")
+	h.Listen(fmt.Sprintf(":%v", cfg.Port))
 }
 
 type Car struct {
@@ -109,6 +121,6 @@ func httpClient() {
 		},
 	})
 	fmt.Printf("h: %v\n", h)
-	fmt.Printf("r: %+v\n", r.Body)
+	fmt.Printf("r: %+v\n", r)
 	fmt.Printf("e: %v\n", e)
 }

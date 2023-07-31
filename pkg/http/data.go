@@ -2,11 +2,15 @@ package http
 
 import (
 	"encoding/json"
+	"fmt"
 	"reflect"
 	"strconv"
 	"strings"
 
 	"github.com/gofiber/fiber/v2"
+	"github.com/sandrolain/gomscv/pkg/body"
+	"github.com/vmihailenco/msgpack/v5"
+	"google.golang.org/protobuf/proto"
 )
 
 func loadData[T any](ctx *fiber.Ctx, dest *T) error {
@@ -61,12 +65,30 @@ func getTagParts(tag string) (source string, key string, enc string) {
 	return
 }
 
-func extractBody(ft *reflect.StructField, fv *reflect.Value, ctx *fiber.Ctx) error {
+func extractBody(ft *reflect.StructField, fv *reflect.Value, ctx *fiber.Ctx) (err error) {
 	field := *ft
 	fieldValue := *fv
 	ptr := reflect.New(field.Type).Interface()
-	if err := ctx.BodyParser(ptr); err != nil {
-		return err
+	if err = ctx.BodyParser(ptr); err != nil {
+		if err != fiber.ErrUnprocessableEntity {
+			return
+		}
+		err = nil
+		resType := strings.Split(ctx.Get("Content-Type"), ";")
+		switch resType[0] {
+		case body.TypeMsgpack, body.TypeXMsgpack:
+			err = msgpack.Unmarshal(ctx.Body(), ptr)
+		case body.TypeProtobuf:
+			d, ok := ptr.(proto.Message)
+			if ok {
+				err = proto.Unmarshal(ctx.Body(), d)
+			} else {
+				err = fmt.Errorf("not a protobuf Message")
+			}
+		}
+		if err != nil {
+			return
+		}
 	}
 	refVal := reflect.ValueOf(ptr).Elem()
 	if fieldValue.CanSet() {

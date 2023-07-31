@@ -3,8 +3,10 @@ module github.com/sandrolain/gomscv
 go 1.20
 
 require (
+	github.com/caarlos0/env/v9 v9.0.0
 	github.com/go-playground/validator/v10 v10.14.1
 	github.com/gofiber/fiber/v2 v2.47.0
+	github.com/golang/protobuf v1.5.3
 	github.com/vmihailenco/msgpack/v5 v5.3.5
 	go.mongodb.org/mongo-driver v1.12.0
 )
@@ -40,4 +42,5 @@ require (
 	golang.org/x/sync v0.1.0 // indirect
 	golang.org/x/sys v0.9.0 // indirect
 	golang.org/x/text v0.8.0 // indirect
+	google.golang.org/protobuf v1.26.0 // indirect
 )

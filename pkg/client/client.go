@@ -2,21 +2,13 @@ package client
 
 import (
 	"bytes"
-	"encoding/json"
 	"fmt"
 	"io"
 	"net/http"
 	"net/url"
 	"regexp"
-	"strings"
 
-	"github.com/vmihailenco/msgpack/v5"
-)
-
-const (
-	TypeJson     = "application/json"
-	TypeMsgpack  = "application/msgpack"
-	TypeXMsgpack = "application/x-msgpack"
+	"github.com/sandrolain/gomscv/pkg/body"
 )
 
 type ClientOptions[T any] struct {
@@ -73,7 +65,7 @@ func CreateClient[T any, R any](opts ClientOptions[T]) func(...Request[T]) (R, *
 		var bodyReader *bytes.Reader
 		if reqOpts.Body != nil {
 			var data []byte
-			data, err = prepareRequestBody(opts.ContentType, reqOpts.Body)
+			data, err = body.MarshalBody(opts.ContentType, reqOpts.Body)
 			if err != nil {
 				return
 			}
@@ -94,7 +86,12 @@ func CreateClient[T any, R any](opts ClientOptions[T]) func(...Request[T]) (R, *
 			return
 		}
 		if res.StatusCode >= 200 && res.StatusCode < 300 {
-			resData, err = parseResponse[R](res)
+			var resBody []byte
+			resBody, err = streamToByte(res.Body)
+			if err != nil {
+				return
+			}
+			resData, err = body.UnmarshalBody[R](res.Header.Get("content-type"), resBody)
 		}
 		if res.StatusCode >= 400 {
 			err = &ResponseError{StatusCode: res.StatusCode}
@@ -103,29 +100,11 @@ func CreateClient[T any, R any](opts ClientOptions[T]) func(...Request[T]) (R, *
 	}
 }
 
-func prepareRequestBody[T any](reqType string, data *T) (reqBytes []byte, err error) {
-	switch reqType {
-	case TypeJson:
-		reqBytes, err = json.Marshal(*data)
-	case TypeMsgpack:
-	case TypeXMsgpack:
-		reqBytes, err = msgpack.Marshal(*data)
-	}
-	return
-}
-
-func parseResponse[R any](res *http.Response) (data R, err error) {
-	resBody, err := streamToByte(res.Body)
-	if err != nil {
-		return
-	}
-	resType := strings.Split(res.Header.Get("content-type"), ";")
-	switch resType[0] {
-	case TypeJson:
-		err = json.Unmarshal(resBody, &data)
-	case TypeMsgpack:
-	case TypeXMsgpack:
-		err = msgpack.Unmarshal(resBody, &data)
+func streamToByte(stream io.Reader) (data []byte, err error) {
+	buf := new(bytes.Buffer)
+	_, err = buf.ReadFrom(stream)
+	if err == nil {
+		data = buf.Bytes()
 	}
 	return
 }
@@ -202,13 +181,4 @@ type ResponseError struct {
 
 func (e *ResponseError) Error() string {
 	return fmt.Sprintf("HTTP Error %d", e.StatusCode)
-}
-
-func streamToByte(stream io.Reader) (data []byte, err error) {
-	buf := new(bytes.Buffer)
-	_, err = buf.ReadFrom(stream)
-	if err == nil {
-		data = buf.Bytes()
-	}
-	return
 }

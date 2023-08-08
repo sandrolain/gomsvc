@@ -1,12 +1,32 @@
 version: '3.3'
 name: "gomsvc"
 services:
+
   mongodb:
-    image: mongo:6.0.3
+    image: mongo:latest
     hostname: mongodb
     ports:
       - "27017:27017"
     environment:
       MONGO_INITDB_ROOT_USERNAME: "root"
       MONGO_INITDB_ROOT_PASSWORD: "mypassword"
+    restart: on-failure
+
+  redis:
+    image: redis:latest
+    hostname: redis
+    ports:
+      - "6379:6379"
+    volumes:
+      - ./data/redis:/data
+    command: redis-server --requirepass "mypassword" --port 6379
+    restart: on-failure
+
+  redis-commander:
+    image: ghcr.io/joeferner/redis-commander:latest
+    hostname: redis-commander
+    ports:
+    - "8081:8081"
+    environment:
+      - REDIS_HOSTS=local:redis:6379:0:mypassword
     restart: on-failure

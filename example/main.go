@@ -9,30 +9,62 @@ import (
 	"github.com/sandrolain/gomscv/example/models"
 	s "github.com/sandrolain/gomscv/example/service"
 	"github.com/sandrolain/gomscv/pkg/client"
-	"github.com/sandrolain/gomscv/pkg/env"
 	h "github.com/sandrolain/gomscv/pkg/http"
+	"github.com/sandrolain/gomscv/pkg/red"
 	"github.com/sandrolain/gomscv/pkg/repo"
+	"github.com/sandrolain/gomscv/pkg/svc"
 	"go.mongodb.org/mongo-driver/bson/primitive"
 )
 
 type Config struct {
-	Port int `env:"PORT" validate:"required"`
+	Port      int    `env:"PORT" validate:"required"`
+	RedisAddr string `env:"REDIS_ADDR" validate:"required"`
+	RedisPwd  string `env:"REDIS_PWD" validate:"required"`
 }
 
-var cfg Config
-
 func main() {
-	cfg := Config{}
-	env.GetEnv(&cfg)
-	fmt.Printf("cfg: %v\n", cfg)
+	svc.Service(svc.ServiceOptions{
+		Name:     "example",
+		Version:  "1.2.3",
+		LogJSON:  true,
+		LogLevel: "DEBUG",
+	}, func(cfg Config) {
+		fmt.Printf("cfg: %v\n", cfg)
 
-	go server(cfg)
+		go redis(cfg)
+		go server(cfg)
 
-	time.Sleep(time.Second)
-	go httpClient()
+		time.Sleep(time.Second)
+		go httpClient()
+	})
+}
 
-	run := make(chan (bool))
-	<-run
+type Data struct {
+	Firstname string
+	Lastname  string
+}
+
+func redis(cfg Config) {
+	red.Connect(cfg.RedisAddr, cfg.RedisPwd)
+
+	red.Subscribe("signup", func(payload red.Message[Data]) error {
+		svc.Logger().Debug("Message received", "payload", payload)
+		return nil
+	}, func(err error) {
+		fmt.Printf("err: %v\n", err)
+	})
+
+	pub := red.Publisher[Data]("signup", red.PublisherConfig{Type: "signup"})
+
+	t := time.NewTicker(time.Second * 3)
+	for {
+		<-t.C
+		err := pub(Data{
+			Firstname: "John",
+			Lastname:  "Doe",
+		})
+		fmt.Printf("err: %v\n", err)
+	}
 }
 
 func server(cfg Config) {

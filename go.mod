@@ -3,7 +3,6 @@ module github.com/sandrolain/gomscv
 go 1.20
 
 require (
-	github.com/Masterminds/semver/v3 v3.2.1
 	github.com/caarlos0/env/v9 v9.0.0
 	github.com/go-playground/validator/v10 v10.14.1
 	github.com/gofiber/fiber/v2 v2.47.0

@@ -8,7 +8,6 @@ import (
 	"sync"
 	"syscall"
 
-	"github.com/Masterminds/semver/v3"
 	"github.com/caarlos0/env/v9"
 	"github.com/go-playground/validator/v10"
 	"github.com/sandrolain/gomscv/pkg/control"
@@ -16,15 +15,13 @@ import (
 	"golang.org/x/exp/slog"
 )
 
-var serviceName string
-var serviceVersion *semver.Version
 var serviceUuid string
 
 var exitCallbacks = make([]OnExitFunc, 0)
 
 type ServiceOptions struct {
 	Name     string `validate:"required"`
-	Version  string `validate:"required"`
+	Version  string `validate:"required,semver"`
 	LogJSON  bool
 	LogLevel string
 }
@@ -37,7 +34,6 @@ var loggerLevel *slog.LevelVar
 func Service[C any](opts ServiceOptions, fn ServiceFunc[C]) {
 	v := validator.New()
 	control.PanicIfError(v.Struct(opts))
-	serviceVersion = control.PanicWithError(semver.NewVersion(opts.Version))
 	serviceUuid = control.PanicWithError(typeid.New(opts.Name)).String()
 	options = &opts
 
@@ -52,7 +48,7 @@ func Service[C any](opts ServiceOptions, fn ServiceFunc[C]) {
 		syscall.SIGINT,  // interrupt: stopped by Ctrl + C
 	)
 
-	slog.Info(`Starting service "%s" v.%s with ID "%s"`, serviceName, serviceVersion, serviceUuid)
+	slog.Info(`Starting service`, "name", options.Name, "version", opts.Version, "ID", serviceUuid)
 
 	go fn(config)
 	<-exitCh
@@ -69,7 +65,7 @@ func exit() {
 		}()
 	}
 	wg.Wait()
-	fmt.Printf(`Exit service "%s"`, serviceName)
+	logger.Info("Exit service")
 	os.Exit(0)
 }
 

@@ -1,11 +1,13 @@
 package http
 
 import (
+	"log/slog"
 	"regexp"
 	"strings"
 
 	"github.com/go-playground/validator/v10"
 	"github.com/gofiber/fiber/v2"
+	slogfiber "github.com/samber/slog-fiber"
 )
 
 var reSpaces = regexp.MustCompile("\\s+")
@@ -19,10 +21,14 @@ func New(config Config, fiberConfig ...fiber.Config) *Server {
 		authorizationFunc: config.AuthorizationFunc,
 		errorFilter:       config.ErrorFilterFunc,
 	}
+	if config.Logger != nil {
+		server.SetLogger(config.Logger)
+	}
 	return &server
 }
 
 type Config struct {
+	Logger            *slog.Logger
 	ValidateData      bool
 	ValidationFunc    ValidationFunc
 	AuthorizationFunc AuthorizationFunc
@@ -52,6 +58,12 @@ type RequestData struct {
 }
 
 type Handler func(*Route, *fiber.Ctx) *RouteError
+
+// FilterError allow to define the errors filter function
+func (s *Server) SetLogger(logger *slog.Logger) *Server {
+	s.app.Use(slogfiber.New(logger))
+	return s
+}
 
 // FilterError allow to define the errors filter function
 func (s *Server) FilterError(filter ErrorFilterFunc) *Server {

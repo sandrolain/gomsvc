@@ -1,16 +1,19 @@
 module github.com/sandrolain/gomscv
 
-go 1.20
+go 1.21
+
+toolchain go1.21.0
 
 require (
 	github.com/caarlos0/env/v9 v9.0.0
 	github.com/go-playground/validator/v10 v10.14.1
 	github.com/gofiber/fiber/v2 v2.47.0
+	github.com/lmittmann/tint v1.0.0
 	github.com/redis/go-redis/v9 v9.0.5
+	github.com/samber/slog-fiber v1.0.0
 	github.com/vmihailenco/msgpack/v5 v5.3.5
 	go.jetpack.io/typeid v0.1.0
 	go.mongodb.org/mongo-driver v1.12.0
-	golang.org/x/exp v0.0.0-20230807204917-050eac23e9de
 	google.golang.org/protobuf v1.26.0
 )
 
@@ -23,6 +26,7 @@ require (
 	github.com/go-playground/universal-translator v0.18.1 // indirect
 	github.com/gofrs/uuid/v5 v5.0.0 // indirect
 	github.com/golang/snappy v0.0.1 // indirect
+	github.com/google/go-cmp v0.5.8 // indirect
 	github.com/google/uuid v1.3.0 // indirect
 	github.com/klauspost/compress v1.16.3 // indirect
 	github.com/leodido/go-urn v1.2.4 // indirect

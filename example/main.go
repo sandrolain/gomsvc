@@ -24,10 +24,8 @@ type Config struct {
 
 func main() {
 	svc.Service(svc.ServiceOptions{
-		Name:     "example",
-		Version:  "1.2.3",
-		LogJSON:  true,
-		LogLevel: "DEBUG",
+		Name:    "example",
+		Version: "1.2.3",
 	}, func(cfg Config) {
 		fmt.Printf("cfg: %v\n", cfg)
 
@@ -68,6 +66,8 @@ func redis(cfg Config) {
 }
 
 func server(cfg Config) {
+
+	h.SetLogger(svc.Logger())
 
 	h.Authorize(func(ctx *fiber.Ctx) error {
 		fmt.Printf("ctx: %v\n", ctx)

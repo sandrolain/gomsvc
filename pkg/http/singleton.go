@@ -1,5 +1,7 @@
 package http
 
+import "log/slog"
+
 var singleServer *Server
 
 func initSingleServer() {
@@ -8,6 +10,11 @@ func initSingleServer() {
 			ValidateData: true,
 		})
 	}
+}
+
+func SetLogger(logger *slog.Logger) {
+	initSingleServer()
+	singleServer.SetLogger(logger)
 }
 
 func FilterError(filter ErrorFilterFunc) {

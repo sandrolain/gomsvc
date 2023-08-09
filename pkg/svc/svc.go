@@ -8,22 +8,27 @@ import (
 	"sync"
 	"syscall"
 
+	"log/slog"
+
 	"github.com/caarlos0/env/v9"
 	"github.com/go-playground/validator/v10"
+	"github.com/lmittmann/tint"
 	"github.com/sandrolain/gomscv/pkg/control"
 	typeid "go.jetpack.io/typeid"
-	"golang.org/x/exp/slog"
 )
 
 var serviceUuid string
 
 var exitCallbacks = make([]OnExitFunc, 0)
 
+type DefaultEnv struct {
+	LogLevel  string `env:"LOG_LEVEL"`
+	LogFormat string `env:"LOG_FORMAT"`
+}
+
 type ServiceOptions struct {
-	Name     string `validate:"required"`
-	Version  string `validate:"required,semver"`
-	LogJSON  bool
-	LogLevel string
+	Name    string `validate:"required"`
+	Version string `validate:"required,semver"`
 }
 type ServiceFunc[T any] func(T)
 
@@ -37,10 +42,11 @@ func Service[C any](opts ServiceOptions, fn ServiceFunc[C]) {
 	serviceUuid = control.PanicWithError(typeid.New(opts.Name)).String()
 	options = &opts
 
-	initLogger(opts.LogJSON, opts.LogLevel)
+	env := control.PanicWithError(GetEnv[DefaultEnv]())
 
-	var config C
-	control.PanicIfError(GetEnv[C](&config))
+	initLogger(env)
+
+	config := control.PanicWithError(GetEnv[C]())
 
 	exitCh := make(chan os.Signal)
 	signal.Notify(exitCh,
@@ -75,31 +81,34 @@ func OnExit(fn OnExitFunc) {
 	exitCallbacks = append(exitCallbacks, fn)
 }
 
-func GetEnv[T any](config *T) error {
-	err := env.Parse(config)
+func GetEnv[T any]() (config T, err error) {
+	err = env.Parse(&config)
 	if e, ok := err.(*env.AggregateError); ok {
 		for _, er := range e.Errors {
-			return fmt.Errorf("Env parse error: %v\n", er)
+			err = fmt.Errorf("Env parse error: %v\n", er)
+			return
 		}
 	}
 	v := validator.New()
-	err = v.Struct(*config)
+	err = v.Struct(config)
 	if e, ok := err.(validator.ValidationErrors); ok {
 		for _, er := range e {
-			return fmt.Errorf("Env validation error: %v\n", er)
+			err = fmt.Errorf("Env validation error: %v\n", er)
+			return
 		}
 	}
-	return nil
+	return
 }
 
-func initLogger(jsonLogger bool, level string) {
+func initLogger(env DefaultEnv) {
 	loggerLevel = new(slog.LevelVar)
-	LogLevel(level)
+	LogLevel(env.LogLevel)
 	var handler slog.Handler
-	if jsonLogger {
+	if strings.ToUpper(env.LogFormat) == "JSON" {
 		handler = slog.NewJSONHandler(os.Stdout, &slog.HandlerOptions{Level: loggerLevel})
 	} else {
-		handler = slog.NewTextHandler(os.Stdout, &slog.HandlerOptions{Level: loggerLevel})
+		handler = tint.NewHandler(os.Stdout, &tint.Options{Level: loggerLevel})
+		// handler = slog.NewTextHandler(os.Stdout, &slog.HandlerOptions{Level: loggerLevel})
 	}
 	logger = slog.New(handler)
 	slog.SetDefault(logger)

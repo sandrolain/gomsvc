@@ -30,10 +30,10 @@ func main() {
 		fmt.Printf("cfg: %v\n", cfg)
 
 		go redis(cfg)
-		go server(cfg)
+		// go server(cfg)
 
-		time.Sleep(time.Second)
-		go httpClient()
+		// time.Sleep(time.Second)
+		// go httpClient()
 	})
 }
 
@@ -45,16 +45,10 @@ type Data struct {
 func redis(cfg Config) {
 	red.Connect(cfg.RedisAddr, cfg.RedisPwd)
 
-	red.Subscribe("signup", func(payload red.Message[Data]) error {
-		svc.Logger().Debug("Message received", "payload", payload)
-		return nil
-	}, func(err error) {
-		fmt.Printf("err: %v\n", err)
-	})
+	// pub := red.Publisher[Data]("signup", red.PublisherConfig{Type: "signup"})
+	pub := red.StreamSender[Data]("mystream", red.SenderConfig{Type: "signup"})
 
-	pub := red.Publisher[Data]("signup", red.PublisherConfig{Type: "signup"})
-
-	t := time.NewTicker(time.Second * 3)
+	t := time.NewTicker(time.Millisecond * 100)
 	for {
 		<-t.C
 		err := pub(Data{

@@ -132,3 +132,11 @@ func LogLevel(level string) {
 		loggerLevel.Set(slog.LevelInfo)
 	}
 }
+
+func ServiceName() string {
+	return options.Name
+}
+
+func ServiceVersion() string {
+	return options.Version
+}

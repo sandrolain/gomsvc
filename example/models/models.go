@@ -10,3 +10,8 @@ type HelloData struct {
 	Body   HelloBody `req:"body"`
 	Num    float64   `query:"num" validate:"min=2"`
 }
+
+type MessageData struct {
+	Firstname string
+	Lastname  string
+}

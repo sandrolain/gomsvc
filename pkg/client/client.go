@@ -8,7 +8,7 @@ import (
 	"net/url"
 	"regexp"
 
-	"github.com/sandrolain/gomscv/pkg/body"
+	"github.com/sandrolain/gomsvc/pkg/body"
 )
 
 type ClientOptions[T any] struct {

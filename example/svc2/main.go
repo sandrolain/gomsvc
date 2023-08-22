@@ -3,9 +3,9 @@ package main
 import (
 	"fmt"
 
-	"github.com/sandrolain/gomscv/example/models"
-	"github.com/sandrolain/gomscv/pkg/red"
-	"github.com/sandrolain/gomscv/pkg/svc"
+	"github.com/sandrolain/gomsvc/example/models"
+	"github.com/sandrolain/gomsvc/pkg/red"
+	"github.com/sandrolain/gomsvc/pkg/svc"
 )
 
 type Config struct {

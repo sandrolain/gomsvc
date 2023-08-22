@@ -1,9 +1,9 @@
 package service
 
 import (
-	m "github.com/sandrolain/gomscv/example/models"
-	"github.com/sandrolain/gomscv/pkg/body"
-	c "github.com/sandrolain/gomscv/pkg/client"
+	m "github.com/sandrolain/gomsvc/example/models"
+	"github.com/sandrolain/gomsvc/pkg/body"
+	c "github.com/sandrolain/gomsvc/pkg/client"
 )
 
 type HB = m.HelloBody

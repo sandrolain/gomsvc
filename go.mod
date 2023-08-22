@@ -1,4 +1,4 @@
-module github.com/sandrolain/gomscv
+module github.com/sandrolain/gomsvc
 
 go 1.21
 

@@ -13,7 +13,7 @@ import (
 	"github.com/caarlos0/env/v9"
 	"github.com/go-playground/validator/v10"
 	"github.com/lmittmann/tint"
-	"github.com/sandrolain/gomscv/pkg/control"
+	"github.com/sandrolain/gomsvc/pkg/control"
 	typeid "go.jetpack.io/typeid"
 )
 

@@ -6,13 +6,13 @@ import (
 
 	"github.com/go-playground/validator/v10"
 	"github.com/gofiber/fiber/v2"
-	"github.com/sandrolain/gomscv/example/models"
-	s "github.com/sandrolain/gomscv/example/service"
-	"github.com/sandrolain/gomscv/pkg/client"
-	h "github.com/sandrolain/gomscv/pkg/http"
-	"github.com/sandrolain/gomscv/pkg/red"
-	"github.com/sandrolain/gomscv/pkg/repo"
-	"github.com/sandrolain/gomscv/pkg/svc"
+	"github.com/sandrolain/gomsvc/example/models"
+	s "github.com/sandrolain/gomsvc/example/service"
+	"github.com/sandrolain/gomsvc/pkg/client"
+	h "github.com/sandrolain/gomsvc/pkg/http"
+	"github.com/sandrolain/gomsvc/pkg/red"
+	"github.com/sandrolain/gomsvc/pkg/repo"
+	"github.com/sandrolain/gomsvc/pkg/svc"
 	"go.mongodb.org/mongo-driver/bson/primitive"
 )
 

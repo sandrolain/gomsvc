@@ -8,7 +8,7 @@ import (
 	"strings"
 
 	"github.com/gofiber/fiber/v2"
-	"github.com/sandrolain/gomscv/pkg/body"
+	"github.com/sandrolain/gomsvc/pkg/body"
 	"github.com/vmihailenco/msgpack/v5"
 	"google.golang.org/protobuf/proto"
 )

@@ -1,18 +1,14 @@
 package api
 
 import (
-	"fmt"
-
 	"github.com/gofiber/fiber/v2"
 )
 
-type DataHandler[T any] func(data *T, ctx *fiber.Ctx) error
+type DataReceiver[T any] func(data *T, ctx *fiber.Ctx) error
 
-func Data[T any](handler DataHandler[T]) Handler {
+func DataHandler[T any](handler DataReceiver[T]) Handler {
 	return func(r *Route, c *fiber.Ctx) *RouteError {
 		var obj T
-
-		fmt.Printf("c.Get(\"content-length\"): %v\n", c.Get("content-length"))
 
 		// Request authorization
 		if err := authorization(r, c); err != nil {

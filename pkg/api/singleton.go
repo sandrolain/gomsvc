@@ -1,6 +1,9 @@
 package api
 
-import "log/slog"
+import (
+	"fmt"
+	"log/slog"
+)
 
 var singleServer *Server
 
@@ -27,9 +30,9 @@ func Authorize(filter AuthorizationFunc) {
 	singleServer.Authorize(filter)
 }
 
-func Handle[T any](method string, path string, handler DataHandler[T]) *Route {
+func Handle(method string, path string, handler Handler) *Route {
 	initSingleServer()
-	return singleServer.Handle(method, path, Data(handler))
+	return singleServer.Handle(method, path, handler)
 }
 
 func V(version int) *Route {
@@ -37,7 +40,12 @@ func V(version int) *Route {
 	return singleServer.V(version)
 }
 
-func Listen(addr string) {
+func ListenAddr(addr string) {
 	initSingleServer()
 	singleServer.Listen(addr)
+}
+
+func ListenPort(port int) {
+	initSingleServer()
+	singleServer.Listen(fmt.Sprintf(":%v", port))
 }

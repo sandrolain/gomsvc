@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"os"
 	"os/signal"
+	"regexp"
 	"strings"
 	"sync"
 	"syscall"
@@ -39,7 +40,7 @@ var loggerLevel *slog.LevelVar
 func Service[C any](opts ServiceOptions, fn ServiceFunc[C]) {
 	v := validator.New()
 	control.PanicIfError(v.Struct(opts))
-	serviceUuid = control.PanicWithError(typeid.New(opts.Name)).String()
+	serviceUuid = control.PanicWithError(typeid.New(cleanTypeIdName(opts.Name))).String()
 	options = &opts
 
 	env := control.PanicWithError(GetEnv[DefaultEnv]())
@@ -142,3 +143,13 @@ func ServiceVersion() string {
 }
 
 type EmptyConfig struct{}
+
+func cleanTypeIdName(name string) string {
+	name = strings.ToLower(name)
+	re := regexp.MustCompile("[^a-z]")
+	name = re.ReplaceAllString(name, "")
+	if len(name) > 63 {
+		name = name[0:63]
+	}
+	return name
+}

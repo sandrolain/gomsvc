@@ -8,6 +8,7 @@ import (
 	"github.com/gofiber/fiber/v2"
 	"github.com/sandrolain/gomsvc/example/models"
 	s "github.com/sandrolain/gomsvc/example/service"
+	"github.com/sandrolain/gomsvc/pkg/api"
 	h "github.com/sandrolain/gomsvc/pkg/api"
 	"github.com/sandrolain/gomsvc/pkg/client"
 	"github.com/sandrolain/gomsvc/pkg/red"
@@ -81,13 +82,13 @@ func server(cfg Config) {
 		return re
 	})
 
-	h.Handle("POST", "/hello", func(d *models.HelloData, c *fiber.Ctx) error {
+	h.Handle("POST", "/hello", api.DataHandler(func(d *models.HelloData, c *fiber.Ctx) error {
 		fmt.Printf("d: %+v\n", d)
 		c.JSON(d)
 		return nil
-	})
+	}))
 
-	h.Listen(fmt.Sprintf(":%v", cfg.Port))
+	h.ListenPort(cfg.Port)
 }
 
 type Car struct {

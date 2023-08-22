@@ -1,6 +1,7 @@
 package api
 
 import (
+	"errors"
 	"fmt"
 	"log/slog"
 	"regexp"
@@ -9,23 +10,68 @@ import (
 	"github.com/go-playground/validator/v10"
 	"github.com/gofiber/fiber/v2"
 	slogfiber "github.com/samber/slog-fiber"
+	"github.com/sandrolain/gomsvc/pkg/svc"
 )
 
 var reSpaces = regexp.MustCompile("\\s+")
 
-func New(config Config, fiberConfig ...fiber.Config) *Server {
-	app := fiber.New(fiberConfig...)
+func New(config Config) *Server {
 	server := Server{
-		app:               app,
 		validateData:      config.ValidateData,
 		validationFunc:    config.ValidationFunc,
 		authorizationFunc: config.AuthorizationFunc,
 		errorFilter:       config.ErrorFilterFunc,
 	}
+	server.app = fiber.New(fiber.Config{
+		ErrorHandler: getFiberErrorHandler(&server),
+	})
 	if config.Logger != nil {
 		server.SetLogger(config.Logger)
+	} else if svc.Logger() != nil {
+		server.SetLogger(svc.Logger())
 	}
 	return &server
+}
+
+func getFiberErrorHandler(s *Server) func(ctx *fiber.Ctx, err error) error {
+	return func(ctx *fiber.Ctx, err error) error {
+		// Status code defaults to 500
+		code := fiber.StatusInternalServerError
+
+		// Retrieve the custom status code if it's a *fiber.Error
+		var e *fiber.Error
+		if errors.As(err, &e) {
+			code = e.Code
+			err = fmt.Errorf(e.Message)
+		}
+
+		// Send custom error page
+		err = handleRouteError(s, &RouteError{
+			Code:   fmt.Sprintf("%v", code),
+			Error:  err,
+			Status: code,
+		}, ctx)
+
+		if err != nil {
+			// In case the SendFile fails
+			return ctx.Status(fiber.StatusInternalServerError).SendString("Internal Server Error")
+		}
+
+		// Return from handler
+		return nil
+	}
+}
+
+func handleRouteError(s *Server, routeErr *RouteError, ctx *fiber.Ctx) error {
+	routeErr.Ctx = ctx
+	if s.errorFilter != nil {
+		routeErr = s.errorFilter(routeErr)
+	}
+	ctx.Status(routeErr.Status)
+	if len(routeErr.Body) > 0 {
+		return ctx.Send(routeErr.Body)
+	}
+	return ctx.JSON(GetResponseForError(*routeErr))
 }
 
 type Config struct {
@@ -128,15 +174,7 @@ func (s *Server) Handle(method string, path string, handler Handler) *Route {
 	}
 	router := r.server.app.Add(r.Method, r.Path, func(ctx *fiber.Ctx) error {
 		if routeErr := handler(r, ctx); routeErr != nil {
-			routeErr.Ctx = ctx
-			if r.server.errorFilter != nil {
-				routeErr = r.server.errorFilter(routeErr)
-			}
-			ctx.Status(routeErr.Status)
-			if len(routeErr.Body) > 0 {
-				return ctx.Send(routeErr.Body)
-			}
-			return ctx.Send([]byte(routeErr.Error.Error()))
+			return handleRouteError(r.server, routeErr, ctx)
 		}
 		return nil
 	})
@@ -154,17 +192,9 @@ func (s *Route) Handle(method string, path string, handler Handler) *Route {
 		validationFunc:    s.validationFunc,
 		authorizationFunc: s.authorizationFunc,
 	}
-	router := r.server.app.Add(r.Method, r.Path, func(ctx *fiber.Ctx) error {
+	router := (*s.Router).Add(r.Method, r.Path, func(ctx *fiber.Ctx) error {
 		if routeErr := handler(r, ctx); routeErr != nil {
-			routeErr.Ctx = ctx
-			if r.server.errorFilter != nil {
-				routeErr = r.server.errorFilter(routeErr)
-			}
-			ctx.Status(routeErr.Status)
-			if len(routeErr.Body) > 0 {
-				return ctx.Send(routeErr.Body)
-			}
-			return ctx.Send([]byte(routeErr.Error.Error()))
+			return handleRouteError(s.server, routeErr, ctx)
 		}
 		return nil
 	})

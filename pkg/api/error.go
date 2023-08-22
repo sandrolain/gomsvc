@@ -5,6 +5,7 @@ import "github.com/gofiber/fiber/v2"
 type RouteError struct {
 	Error  error
 	Status int
+	Code   string
 	Body   []byte
 	Ctx    *fiber.Ctx
 }

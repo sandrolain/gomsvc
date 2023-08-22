@@ -1,6 +1,7 @@
-package http
+package api
 
 import (
+	"fmt"
 	"log/slog"
 	"regexp"
 	"strings"
@@ -47,6 +48,7 @@ type Route struct {
 	server            *Server
 	Method            string
 	Path              string
+	Route             *Route
 	Router            *fiber.Router
 	validationFunc    ValidationFunc
 	authorizationFunc AuthorizationFunc
@@ -103,6 +105,18 @@ func getValidate(s *Server) (v *validator.Validate) {
 	return
 }
 
+func (s *Server) V(version int) *Route {
+	r := &Route{
+		server:            s,
+		validate:          getValidate(s),
+		validationFunc:    s.validationFunc,
+		authorizationFunc: s.authorizationFunc,
+	}
+	router := s.app.Group(fmt.Sprintf("/v%v", version))
+	r.Router = &router
+	return r
+}
+
 func (s *Server) Handle(method string, path string, handler Handler) *Route {
 	r := &Route{
 		server:            s,
@@ -112,7 +126,34 @@ func (s *Server) Handle(method string, path string, handler Handler) *Route {
 		validationFunc:    s.validationFunc,
 		authorizationFunc: s.authorizationFunc,
 	}
+	router := r.server.app.Add(r.Method, r.Path, func(ctx *fiber.Ctx) error {
+		if routeErr := handler(r, ctx); routeErr != nil {
+			routeErr.Ctx = ctx
+			if r.server.errorFilter != nil {
+				routeErr = r.server.errorFilter(routeErr)
+			}
+			ctx.Status(routeErr.Status)
+			if len(routeErr.Body) > 0 {
+				return ctx.Send(routeErr.Body)
+			}
+			return ctx.Send([]byte(routeErr.Error.Error()))
+		}
+		return nil
+	})
+	r.Router = &router
+	return r
+}
 
+func (s *Route) Handle(method string, path string, handler Handler) *Route {
+	r := &Route{
+		Route:             s,
+		server:            s.server,
+		Method:            method,
+		Path:              path,
+		validate:          getValidate(s.server),
+		validationFunc:    s.validationFunc,
+		authorizationFunc: s.authorizationFunc,
+	}
 	router := r.server.app.Add(r.Method, r.Path, func(ctx *fiber.Ctx) error {
 		if routeErr := handler(r, ctx); routeErr != nil {
 			routeErr.Ctx = ctx

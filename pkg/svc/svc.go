@@ -140,3 +140,5 @@ func ServiceName() string {
 func ServiceVersion() string {
 	return options.Version
 }
+
+type EmptyConfig struct{}

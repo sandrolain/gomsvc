@@ -1,4 +1,4 @@
-package http
+package api
 
 import "log/slog"
 
@@ -32,12 +32,9 @@ func Handle[T any](method string, path string, handler DataHandler[T]) *Route {
 	return singleServer.Handle(method, path, Data(handler))
 }
 
-func Get[T any](path string, handler DataHandler[T]) *Route {
-	return Handle("GET", path, handler)
-}
-
-func Post[T any](path string, handler DataHandler[T]) *Route {
-	return Handle("POST", path, handler)
+func V(version int) *Route {
+	initSingleServer()
+	return singleServer.V(version)
 }
 
 func Listen(addr string) {

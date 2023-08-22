@@ -1,4 +1,4 @@
-package http
+package api
 
 import (
 	"encoding/json"
@@ -153,3 +153,5 @@ func convertValue(ft *reflect.StructField, fv *reflect.Value, str string, enc st
 	fieldValue.Set(refVal)
 	return nil
 }
+
+type EmptyData struct{}

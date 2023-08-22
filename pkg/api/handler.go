@@ -1,4 +1,4 @@
-package http
+package api
 
 import (
 	"fmt"
@@ -6,7 +6,7 @@ import (
 	"github.com/gofiber/fiber/v2"
 )
 
-type DataHandler[T any] func(*T, *fiber.Ctx) error
+type DataHandler[T any] func(data *T, ctx *fiber.Ctx) error
 
 func Data[T any](handler DataHandler[T]) Handler {
 	return func(r *Route, c *fiber.Ctx) *RouteError {

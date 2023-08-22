@@ -8,8 +8,8 @@ import (
 	"github.com/gofiber/fiber/v2"
 	"github.com/sandrolain/gomsvc/example/models"
 	s "github.com/sandrolain/gomsvc/example/service"
+	h "github.com/sandrolain/gomsvc/pkg/api"
 	"github.com/sandrolain/gomsvc/pkg/client"
-	h "github.com/sandrolain/gomsvc/pkg/http"
 	"github.com/sandrolain/gomsvc/pkg/red"
 	"github.com/sandrolain/gomsvc/pkg/repo"
 	"github.com/sandrolain/gomsvc/pkg/svc"
@@ -81,7 +81,7 @@ func server(cfg Config) {
 		return re
 	})
 
-	h.Post("/hello", func(d *models.HelloData, c *fiber.Ctx) error {
+	h.Handle("POST", "/hello", func(d *models.HelloData, c *fiber.Ctx) error {
 		fmt.Printf("d: %+v\n", d)
 		c.JSON(d)
 		return nil

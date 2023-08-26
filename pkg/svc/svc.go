@@ -106,9 +106,9 @@ func initLogger(env DefaultEnv) {
 	LogLevel(env.LogLevel)
 	var handler slog.Handler
 	if strings.ToUpper(env.LogFormat) == "JSON" {
-		handler = slog.NewJSONHandler(os.Stdout, &slog.HandlerOptions{Level: loggerLevel})
+		handler = slog.NewJSONHandler(os.Stdout, &slog.HandlerOptions{Level: loggerLevel, AddSource: true})
 	} else {
-		handler = tint.NewHandler(os.Stdout, &tint.Options{Level: loggerLevel})
+		handler = tint.NewHandler(os.Stdout, &tint.Options{Level: loggerLevel, AddSource: true})
 		// handler = slog.NewTextHandler(os.Stdout, &slog.HandlerOptions{Level: loggerLevel})
 	}
 	logger = slog.New(handler)

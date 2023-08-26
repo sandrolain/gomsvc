@@ -11,7 +11,7 @@ import (
 	"github.com/sandrolain/gomsvc/pkg/api"
 	h "github.com/sandrolain/gomsvc/pkg/api"
 	"github.com/sandrolain/gomsvc/pkg/client"
-	"github.com/sandrolain/gomsvc/pkg/red"
+	"github.com/sandrolain/gomsvc/pkg/redislib"
 	"github.com/sandrolain/gomsvc/pkg/repo"
 	"github.com/sandrolain/gomsvc/pkg/svc"
 	"go.mongodb.org/mongo-driver/bson/primitive"
@@ -44,10 +44,13 @@ type Data struct {
 }
 
 func redis(cfg Config) {
-	red.Connect(cfg.RedisAddr, cfg.RedisPwd)
+	redislib.Connect(redislib.Config{
+		Address:  cfg.RedisAddr,
+		Password: cfg.RedisPwd,
+	})
 
-	// pub := red.Publisher[Data]("signup", red.PublisherConfig{Type: "signup"})
-	pub := red.StreamSender[Data]("mystream", red.SenderConfig{Type: "signup"})
+	// pub := redislib.Publisher[Data]("signup", redislib.PublisherConfig{Type: "signup"})
+	pub := redislib.StreamSender[Data]("mystream", redislib.SenderConfig{Type: "signup"})
 
 	t := time.NewTicker(time.Millisecond * 100)
 	for {

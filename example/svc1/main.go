@@ -4,7 +4,7 @@ import (
 	"fmt"
 
 	"github.com/sandrolain/gomsvc/example/models"
-	"github.com/sandrolain/gomsvc/pkg/red"
+	"github.com/sandrolain/gomsvc/pkg/redislib"
 	"github.com/sandrolain/gomsvc/pkg/svc"
 )
 
@@ -21,15 +21,18 @@ func main() {
 	}, func(cfg Config) {
 		fmt.Printf("cfg: %v\n", cfg)
 
-		red.Connect(cfg.RedisAddr, cfg.RedisPwd)
+		redislib.Connect(redislib.Config{
+			Address:  cfg.RedisAddr,
+			Password: cfg.RedisPwd,
+		})
 
-		// red.Subscribe("signup", func(payload red.Message[models.MessageData]) error {
+		// redislib.Subscribe("signup", func(payload redislib.Message[models.MessageData]) error {
 		// 	svc.Logger().Debug("Message received", "payload", payload)
 		// 	return nil
 		// }, func(err error) {
 		// 	fmt.Printf("err: %v\n", err)
 		// })
-		red.StreamConsumer("mystream", "group1", svc.ServiceName(), func(payload red.Message[models.MessageData]) error {
+		redislib.StreamConsumer("mystream", "group1", svc.ServiceName(), func(payload redislib.Message[models.MessageData]) error {
 			svc.Logger().Debug("Message received", "payload", payload)
 			return nil
 		}, func(err error) {

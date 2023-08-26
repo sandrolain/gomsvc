@@ -14,7 +14,9 @@ require (
 	github.com/vmihailenco/msgpack/v5 v5.3.5
 	go.jetpack.io/typeid v0.1.0
 	go.mongodb.org/mongo-driver v1.12.1
+	google.golang.org/grpc v1.57.0
 	google.golang.org/protobuf v1.31.0
+	gorm.io/gorm v1.25.4
 )
 
 require (
@@ -25,8 +27,8 @@ require (
 	github.com/go-playground/locales v0.14.1 // indirect
 	github.com/go-playground/universal-translator v0.18.1 // indirect
 	github.com/gofrs/uuid/v5 v5.0.0 // indirect
+	github.com/golang/protobuf v1.5.3 // indirect
 	github.com/golang/snappy v0.0.4 // indirect
-	github.com/google/go-cmp v0.5.8 // indirect
 	github.com/google/uuid v1.3.1 // indirect
 	github.com/klauspost/compress v1.16.7 // indirect
 	github.com/leodido/go-urn v1.2.4 // indirect
@@ -48,4 +50,5 @@ require (
 	golang.org/x/sync v0.3.0 // indirect
 	golang.org/x/sys v0.11.0 // indirect
 	golang.org/x/text v0.12.0 // indirect
+	google.golang.org/genproto/googleapis/rpc v0.0.0-20230525234030-28d5490b6b19 // indirect
 )

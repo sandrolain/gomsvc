@@ -1,4 +1,4 @@
-package red
+package redislib
 
 import (
 	"context"

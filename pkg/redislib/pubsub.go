@@ -1,22 +1,12 @@
-package red
+package redislib
 
 import (
 	"context"
 	"encoding/json"
 	"time"
 
-	"github.com/redis/go-redis/v9"
 	"go.jetpack.io/typeid"
 )
-
-var redisClient *redis.Client
-
-func Connect(addr string, password string) {
-	redisClient = redis.NewClient(&redis.Options{
-		Addr:     addr,
-		Password: password,
-	})
-}
 
 type PublisherConfig struct {
 	Type    string

@@ -32,9 +32,8 @@ func main() {
 		// }, func(err error) {
 		// 	fmt.Printf("err: %v\n", err)
 		// })
-		redislib.StreamConsumer("mystream", "group1", svc.ServiceName(), func(payload redislib.Message[models.MessageData]) error {
+		redislib.StreamConsumer("mystream", "group1", svc.ServiceName(), func(payload redislib.Message[models.MessageData]) {
 			svc.Logger().Debug("Message received", "payload", payload)
-			return nil
 		}, func(err error) {
 			fmt.Printf("err: %v\n", err)
 		})

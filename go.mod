@@ -8,6 +8,7 @@ require (
 	github.com/caarlos0/env/v9 v9.0.0
 	github.com/go-playground/validator/v10 v10.15.1
 	github.com/gofiber/fiber/v2 v2.48.0
+	github.com/jordan-wright/email v4.0.1-0.20210109023952-943e75fe5223+incompatible
 	github.com/lmittmann/tint v1.0.0
 	github.com/redis/go-redis/v9 v9.1.0
 	github.com/samber/slog-fiber v1.0.0
@@ -16,6 +17,7 @@ require (
 	go.mongodb.org/mongo-driver v1.12.1
 	google.golang.org/grpc v1.57.0
 	google.golang.org/protobuf v1.31.0
+	gorm.io/driver/postgres v1.5.2
 	gorm.io/gorm v1.25.4
 )
 
@@ -30,6 +32,11 @@ require (
 	github.com/golang/protobuf v1.5.3 // indirect
 	github.com/golang/snappy v0.0.4 // indirect
 	github.com/google/uuid v1.3.1 // indirect
+	github.com/jackc/pgpassfile v1.0.0 // indirect
+	github.com/jackc/pgservicefile v0.0.0-20221227161230-091c0ba34f0a // indirect
+	github.com/jackc/pgx/v5 v5.3.1 // indirect
+	github.com/jinzhu/inflection v1.0.0 // indirect
+	github.com/jinzhu/now v1.1.5 // indirect
 	github.com/klauspost/compress v1.16.7 // indirect
 	github.com/leodido/go-urn v1.2.4 // indirect
 	github.com/mattn/go-colorable v0.1.13 // indirect

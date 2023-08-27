@@ -1,4 +1,4 @@
-package control
+package svc
 
 func PanicWithError[T any](v T, e error) T {
 	if e != nil {

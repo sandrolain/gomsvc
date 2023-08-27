@@ -2,11 +2,11 @@ package redislib
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
 	"time"
 
 	"github.com/redis/go-redis/v9"
+	"github.com/vmihailenco/msgpack/v5"
 	"go.jetpack.io/typeid"
 )
 
@@ -35,18 +35,17 @@ func StreamSender[T any](stream string, config SenderConfig) func(T) error {
 			Origin:    config.Origin,
 			Payload:   payload,
 		}
-		data, err := json.Marshal(message)
+		data, err := msgpack.Marshal(message)
 		if err != nil {
 			return err
-		}
-		values := map[string]interface{}{
-			"message": data,
 		}
 		return redisClient.XAdd(ctx, &redis.XAddArgs{
 			Stream: stream,
 			MaxLen: 0,
 			ID:     "",
-			Values: values,
+			Values: map[string]interface{}{
+				"data": data,
+			},
 		}).Err()
 	}
 }
@@ -56,8 +55,14 @@ func StreamConsumer[T any](stream string, group string, consumer string, receive
 	go func() {
 		id := "0"
 		ctx := context.Background()
-		redisClient.XGroupCreate(ctx, stream, group, id)
-		redisClient.XGroupCreateConsumer(ctx, stream, group, consumer)
+		gRes := redisClient.XGroupCreateMkStream(ctx, stream, group, id)
+		if gRes.Err() != nil {
+			onError(gRes.Err())
+		}
+		cRes := redisClient.XGroupCreateConsumer(ctx, stream, group, consumer)
+		if cRes.Err() != nil {
+			onError(cRes.Err())
+		}
 		for {
 			if closed {
 				return
@@ -79,9 +84,25 @@ func StreamConsumer[T any](stream string, group string, consumer string, receive
 			///we have received the data we should loop it and queue the messages
 			//so that our jobs can start processing
 			for _, result := range data {
-				for _, message := range result.Messages {
-					fmt.Printf("message: %v\n", message)
-					id = message.ID
+				for _, msg := range result.Messages {
+					id = msg.ID
+					data, ok := msg.Values["data"]
+					if !ok {
+						onError(fmt.Errorf("message %v bad map", id))
+						continue
+					}
+					dataStr, ok := data.(string)
+					if !ok {
+						onError(fmt.Errorf("message %v bad data type", id))
+						continue
+					}
+					var message Message[T]
+					err = msgpack.Unmarshal([]byte(dataStr), &message)
+					if err != nil {
+						onError(err)
+						continue
+					}
+					receiver(message)
 					redisClient.XDel(ctx, stream, id)
 				}
 			}

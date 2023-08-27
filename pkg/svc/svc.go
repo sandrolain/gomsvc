@@ -14,7 +14,6 @@ import (
 	"github.com/caarlos0/env/v9"
 	"github.com/go-playground/validator/v10"
 	"github.com/lmittmann/tint"
-	"github.com/sandrolain/gomsvc/pkg/control"
 	typeid "go.jetpack.io/typeid"
 )
 
@@ -39,15 +38,15 @@ var loggerLevel *slog.LevelVar
 
 func Service[C any](opts ServiceOptions, fn ServiceFunc[C]) {
 	v := validator.New()
-	control.PanicIfError(v.Struct(opts))
-	serviceUuid = control.PanicWithError(typeid.New(cleanTypeIdName(opts.Name))).String()
+	PanicIfError(v.Struct(opts))
+	serviceUuid = PanicWithError(typeid.New(cleanTypeIdName(opts.Name))).String()
 	options = &opts
 
-	env := control.PanicWithError(GetEnv[DefaultEnv]())
+	env := PanicWithError(GetEnv[DefaultEnv]())
 
 	initLogger(env)
 
-	config := control.PanicWithError(GetEnv[C]())
+	config := PanicWithError(GetEnv[C]())
 
 	exitCh := make(chan os.Signal)
 	signal.Notify(exitCh,

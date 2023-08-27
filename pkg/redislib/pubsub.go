@@ -41,7 +41,7 @@ func Publisher[T any](channel string, config PublisherConfig) func(T) error {
 	}
 }
 
-type ReceiverFunc[T any] func(payload Message[T]) error
+type ReceiverFunc[T any] func(msg Message[T])
 type ErrorFunc func(error)
 
 func Subscribe[T any](channel string, receiver ReceiverFunc[T], onError ErrorFunc) func() {
@@ -73,11 +73,7 @@ func Subscribe[T any](channel string, receiver ReceiverFunc[T], onError ErrorFun
 				continue
 			}
 
-			err = receiver(payload)
-			if err != nil {
-				onError(err)
-				continue
-			}
+			receiver(payload)
 		}
 	}()
 

@@ -7,6 +7,10 @@ import (
 	"gorm.io/gorm"
 )
 
+type EnvPostgresConfig struct {
+	PostgresDSN string `env:"POSTGRES_DSN" validate:"required"`
+}
+
 type Config struct {
 	Dsn           string
 	SlowThreshold time.Duration

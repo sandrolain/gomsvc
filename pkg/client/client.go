@@ -11,93 +11,97 @@ import (
 	"github.com/sandrolain/gomsvc/pkg/body"
 )
 
-type ClientOptions[T any] struct {
-	Method      string
-	Url         string
-	ContentType string
-	Request     *Request[T]
-}
-
 type H [][2]string
 type P [][2]string
 type Q [][2]string
 
 type Request[T any] struct {
-	Headers H
-	Params  P
-	Query   Q
-	Body    *T
+	Method      string
+	Url         string
+	Headers     H
+	Params      P
+	Query       Q
+	ContentType string
+	Body        *T
 }
 
-func CreateClient[T any, R any](opts ClientOptions[T]) func(...Request[T]) (R, *http.Response, error) {
-	return func(request ...Request[T]) (resData R, res *http.Response, err error) {
-		reqOpts := getFirst(request)
-		client := &http.Client{}
-		headers := reqOpts.Headers
-		if opts.Request != nil && len(opts.Request.Headers) > 0 {
-			headers = mergeCouples(headers, opts.Request.Headers)
-		}
-		params := reqOpts.Params
-		if opts.Request != nil && len(opts.Request.Params) > 0 {
-			params = mergeCouples(params, opts.Request.Params)
-		}
-		query := reqOpts.Query
-		if opts.Request != nil && len(opts.Request.Query) > 0 {
-			query = mergeCouples(query, opts.Request.Query)
-		}
-		reqUrl := opts.Url
-		if len(params) > 0 {
-			reqUrl, err = replaceParams(reqUrl, params)
-			if err != nil {
-				return
-			}
-		}
-		if len(query) > 0 {
-			reqUrl, err = applyQuery(reqUrl, query)
-			if err != nil {
-				return
-			}
-		}
-		method := opts.Method
-		if method == "" {
-			method = "GET"
-		}
-		var bodyReader *bytes.Reader
-		if reqOpts.Body != nil {
-			var data []byte
-			data, err = body.MarshalBody(opts.ContentType, reqOpts.Body)
-			if err != nil {
-				return
-			}
-			if len(opts.ContentType) > 0 {
-				headers = append(headers, [2]string{"Content-Type", opts.ContentType})
-			}
-			bodyReader = bytes.NewReader(data)
-		}
-		req, err := http.NewRequest(method, reqUrl, bodyReader)
+func Fetch[R any, B any](request ...Request[B]) (resData R, res *http.Response, err error) {
+	reqOpts := getFirst(request)
+	client := &http.Client{}
+	headers := reqOpts.Headers
+	params := reqOpts.Params
+	query := reqOpts.Query
+	method := reqOpts.Method
+	reqUrl := reqOpts.Url
+	if len(params) > 0 {
+		reqUrl, err = replaceParams(reqUrl, params)
 		if err != nil {
 			return
 		}
-		if len(headers) > 0 {
-			applyHeaders(req, headers)
-		}
-		res, err = client.Do(req)
+	}
+	if len(query) > 0 {
+		reqUrl, err = applyQuery(reqUrl, query)
 		if err != nil {
 			return
 		}
-		if res.StatusCode >= 200 && res.StatusCode < 300 {
-			var resBody []byte
-			resBody, err = streamToByte(res.Body)
+	}
+	if method == "" {
+		method = "GET"
+	}
+	var bodyReader *bytes.Reader
+	if reqOpts.Body != nil {
+		var data []byte
+		switch p := any(*reqOpts.Body).(type) {
+		case string:
+			data = []byte(p)
+		case []byte:
+			data = p
+		default:
+			data, err = body.MarshalBody(reqOpts.ContentType, reqOpts.Body)
 			if err != nil {
 				return
 			}
-			resData, err = body.UnmarshalBody[R](res.Header.Get("content-type"), resBody)
 		}
-		if res.StatusCode >= 400 {
-			err = &ResponseError{StatusCode: res.StatusCode}
+		if len(reqOpts.ContentType) > 0 {
+			headers = append(headers, [2]string{"Content-Type", reqOpts.ContentType})
 		}
+		bodyReader = bytes.NewReader(data)
+	}
+	req, err := http.NewRequest(method, reqUrl, bodyReader)
+	if err != nil {
 		return
 	}
+	if len(headers) > 0 {
+		applyHeaders(req, headers)
+	}
+	res, err = client.Do(req)
+	if err != nil {
+		return
+	}
+	if res.StatusCode >= 200 && res.StatusCode < 300 {
+		var resBody []byte
+		resBody, err = streamToByte(res.Body)
+		if err != nil {
+			return
+		}
+		var ret any
+		switch any(resData).(type) {
+		case []byte:
+			ret = resBody
+		case string:
+			ret = string(resBody)
+		default:
+			ret, err = body.UnmarshalBody[R](res.Header.Get("content-type"), resBody)
+			if err != nil {
+				return
+			}
+		}
+		resData = ret.(R)
+	}
+	if res.StatusCode >= 400 {
+		err = &ResponseError{StatusCode: res.StatusCode}
+	}
+	return
 }
 
 func streamToByte(stream io.Reader) (data []byte, err error) {

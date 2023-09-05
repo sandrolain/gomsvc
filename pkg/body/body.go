@@ -2,11 +2,9 @@ package body
 
 import (
 	"encoding/json"
-	"fmt"
 	"strings"
 
 	"github.com/vmihailenco/msgpack/v5"
-	"google.golang.org/protobuf/proto"
 )
 
 const (
@@ -28,13 +26,6 @@ func MarshalBody[T any](typ string, data *T) (reqBytes []byte, err error) {
 		reqBytes, err = json.Marshal(*data)
 	case TypeMsgpack, TypeXMsgpack:
 		reqBytes, err = msgpack.Marshal(*data)
-	case TypeProtobuf:
-		d, ok := dataAsType[T, proto.Message](*data)
-		if ok {
-			reqBytes, err = proto.Marshal(d)
-		} else {
-			err = fmt.Errorf("not a protobuf Message")
-		}
 	}
 	return
 }
@@ -46,13 +37,6 @@ func UnmarshalBody[R any](typ string, resBody []byte) (data R, err error) {
 		err = json.Unmarshal(resBody, &data)
 	case TypeMsgpack, TypeXMsgpack:
 		err = msgpack.Unmarshal(resBody, &data)
-	case TypeProtobuf:
-		d, ok := dataAsType[R, proto.Message](data)
-		if ok {
-			err = proto.Unmarshal(resBody, d)
-		} else {
-			err = fmt.Errorf("not a protobuf Message")
-		}
 	}
 	return
 }

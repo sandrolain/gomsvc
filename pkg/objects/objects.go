@@ -58,14 +58,34 @@ func (c *Client) AssureBucket(ctx context.Context, bucketName string) (err error
 	return
 }
 
-func (c *Client) PutFile(ctx context.Context, bucketName string, objectName string, filePath string, contentType string) (info minio.UploadInfo, err error) {
-	info, err = c.MinIO.FPutObject(ctx, bucketName, objectName, filePath, minio.PutObjectOptions{ContentType: contentType})
-	return
+type Object struct {
+	BucketName  string
+	ObjectName  string
+	FilePath    string
+	Data        []byte
+	ContentType string
 }
 
-func (c *Client) PutData(ctx context.Context, bucketName string, objectName string, data []byte, contentType string) (info minio.UploadInfo, err error) {
-	reader := bytes.NewReader(data)
-	objectSize := int64(len(data))
-	info, err = c.MinIO.PutObject(ctx, bucketName, objectName, reader, objectSize, minio.PutObjectOptions{ContentType: contentType})
+func (c *Client) PutObjects(ctx context.Context, objects []Object) (infos []minio.UploadInfo, err error) {
+	infos = make([]minio.UploadInfo, len(objects))
+	for i, o := range objects {
+		var info minio.UploadInfo
+		switch {
+		case o.FilePath != "":
+			info, err = c.MinIO.FPutObject(ctx, o.BucketName, o.ObjectName, o.FilePath, minio.PutObjectOptions{ContentType: o.ContentType})
+			if err != nil {
+				return
+			}
+			infos[i] = info
+		case o.Data != nil && len(o.Data) > 0:
+			reader := bytes.NewReader(o.Data)
+			objectSize := int64(len(o.Data))
+			info, err = c.MinIO.PutObject(ctx, o.BucketName, o.ObjectName, reader, objectSize, minio.PutObjectOptions{ContentType: o.ContentType})
+			if err != nil {
+				return
+			}
+			infos[i] = info
+		}
+	}
 	return
 }

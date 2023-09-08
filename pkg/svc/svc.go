@@ -36,6 +36,8 @@ var options *ServiceOptions
 var logger *slog.Logger
 var loggerLevel *slog.LevelVar
 
+var globalConfig interface{}
+
 func Service[C any](opts ServiceOptions, fn ServiceFunc[C]) {
 	v := validator.New()
 	PanicIfError(v.Struct(opts))
@@ -55,6 +57,8 @@ func Service[C any](opts ServiceOptions, fn ServiceFunc[C]) {
 	)
 
 	slog.Info(`Starting service`, "name", options.Name, "version", opts.Version, "ID", serviceUuid)
+
+	globalConfig = config
 
 	go fn(config)
 	<-exitCh
@@ -114,8 +118,17 @@ func initLogger(env DefaultEnv) {
 	slog.SetDefault(logger)
 }
 
+func Config[T any]() T {
+	return globalConfig.(T)
+}
+
 func Logger() *slog.Logger {
 	return logger
+}
+
+func LoggerNamespace(ns string, args ...any) *slog.Logger {
+	args = append([]any{"ns", ns}, args...)
+	return logger.With(args...)
 }
 
 func LogLevel(level string) {

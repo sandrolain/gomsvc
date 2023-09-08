@@ -54,13 +54,13 @@ func applyInit(ctx context.Context, init *Init) *resty.Request {
 	return r
 }
 
-func GetJSON[R any](ctx context.Context, url string, init Init) (res Response[R], err error) {
+func GetJSON[R any](ctx context.Context, url string, init Init) (res Response[*R], err error) {
 	req := applyInit(ctx, &init)
 	if resp, err := req.Get(url); err == nil {
 		var body R
 		err = json.Unmarshal(resp.Body(), &body)
 		res.Resty = resp
-		res.Body = body
+		res.Body = &body
 	}
 	return
 }
@@ -70,6 +70,17 @@ func GetBytes(ctx context.Context, url string, init Init) (res Response[[]byte],
 	if resp, err := req.Get(url); err == nil {
 		res.Resty = resp
 		res.Body = resp.Body()
+	}
+	return
+}
+
+func PostJSON[R any](ctx context.Context, url string, init Init) (res Response[*R], err error) {
+	req := applyInit(ctx, &init)
+	if resp, err := req.Post(url); err == nil {
+		var body R
+		err = json.Unmarshal(resp.Body(), &body)
+		res.Resty = resp
+		res.Body = &body
 	}
 	return
 }

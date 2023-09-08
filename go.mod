@@ -9,6 +9,7 @@ require (
 	github.com/go-playground/validator/v10 v10.15.1
 	github.com/go-resty/resty/v2 v2.7.0
 	github.com/gofiber/fiber/v2 v2.48.0
+	github.com/grpc-ecosystem/go-grpc-middleware/v2 v2.0.0
 	github.com/jinzhu/copier v0.4.0
 	github.com/jordan-wright/email v4.0.1-0.20210109023952-943e75fe5223+incompatible
 	github.com/lmittmann/tint v1.0.0
@@ -16,6 +17,7 @@ require (
 	github.com/redis/go-redis/v9 v9.1.0
 	github.com/samber/slog-fiber v1.0.0
 	github.com/twpayne/go-geom v1.5.2
+	github.com/vincent-petithory/dataurl v1.0.0
 	github.com/vmihailenco/msgpack/v5 v5.3.5
 	go.jetpack.io/typeid v0.1.0
 	go.mongodb.org/mongo-driver v1.12.1

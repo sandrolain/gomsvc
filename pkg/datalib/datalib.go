@@ -1,11 +1,10 @@
 package datalib
 
 import (
-	"encoding/base64"
-	"fmt"
 	"reflect"
 
 	"github.com/jinzhu/copier"
+	"github.com/vincent-petithory/dataurl"
 )
 
 func IsEmpty(val interface{}) bool {
@@ -32,7 +31,17 @@ func Copy[T any, F any](to *T, from *F) error {
 	return copier.CopyWithOption(to, from, copier.Option{IgnoreEmpty: true, DeepCopy: true})
 }
 
-func DataURI(data []byte, contentType string) string {
-	b64 := base64.StdEncoding.EncodeToString(data)
-	return fmt.Sprintf("data:%s;base64,%s", contentType, b64)
+func EncodeDataURI(data []byte, contentType string) string {
+	d := dataurl.New(data, contentType)
+	return d.String()
+}
+
+func DecodeDataURI(uri string) (data []byte, ct string, err error) {
+	dataURL, err := dataurl.DecodeString(uri)
+	if err != nil {
+		return
+	}
+	data = dataURL.Data
+	ct = dataURL.ContentType()
+	return
 }

@@ -1,16 +1,16 @@
 package main
 
 import (
+	"context"
 	"fmt"
 	"time"
 
 	"github.com/go-playground/validator/v10"
 	"github.com/gofiber/fiber/v2"
 	"github.com/sandrolain/gomsvc/example/models"
-	s "github.com/sandrolain/gomsvc/example/service"
 	"github.com/sandrolain/gomsvc/pkg/api"
 	h "github.com/sandrolain/gomsvc/pkg/api"
-	"github.com/sandrolain/gomsvc/pkg/client"
+	"github.com/sandrolain/gomsvc/pkg/api/client"
 	"github.com/sandrolain/gomsvc/pkg/redislib"
 	"github.com/sandrolain/gomsvc/pkg/repo"
 	"github.com/sandrolain/gomsvc/pkg/svc"
@@ -138,19 +138,18 @@ func db() {
 }
 
 func httpClient() {
-	h, r, e := s.SayHello(client.Request[s.HB]{
-		Headers: client.H{
-			{"X-Token", "my-token"},
+	res, err := client.PostJSON[models.HelloBody](context.Background(), "http://localhost:3000/hello", client.Init{
+		Headers: map[string]string{
+			"X-Token": "my-token",
 		},
-		Query: client.Q{
-			{"num", "123"},
+		Query: map[string]string{
+			"num": "123",
 		},
-		Body: &s.HB{
+		Body: models.HelloBody{
 			Type:   "Hello",
 			Salary: 1234,
 		},
 	})
-	fmt.Printf("h: %v\n", h)
-	fmt.Printf("r: %+v\n", r)
-	fmt.Printf("e: %v\n", e)
+	fmt.Printf("res: %v\n", res)
+	fmt.Printf("err: %v\n", err)
 }

@@ -1,48 +1,49 @@
 package api
 
-import "github.com/gofiber/fiber/v2"
+import (
+	"github.com/gofiber/fiber/v2"
+)
 
 type RouteError struct {
-	Error  error
+	Err    error
 	Status int
 	Code   string
 	Body   []byte
-	Ctx    *fiber.Ctx
 }
 
-type ErrorFilterFunc func(*RouteError) *RouteError
+func (e RouteError) Error() string {
+	return e.Err.Error()
+}
+
+type ErrorFilterFunc func(RouteError) RouteError
 
 type ValidationFunc func(ctx *fiber.Ctx) error
 type AuthorizationFunc func(ctx *fiber.Ctx) error
 
-func InternalServerError(ctx *fiber.Ctx, err error) *RouteError {
-	return &RouteError{
+func InternalServerError(err error) RouteError {
+	return RouteError{
 		Status: fiber.StatusInternalServerError,
-		Ctx:    ctx,
-		Error:  err,
+		Err:    err,
 	}
 }
 
-func BadRequestError(ctx *fiber.Ctx, err error) *RouteError {
-	return &RouteError{
+func BadRequestError(err error) RouteError {
+	return RouteError{
 		Status: fiber.StatusBadRequest,
-		Ctx:    ctx,
-		Error:  err,
+		Err:    err,
 	}
 }
 
-func ForbiddenError(ctx *fiber.Ctx, err error) *RouteError {
-	return &RouteError{
+func ForbiddenError(err error) RouteError {
+	return RouteError{
 		Status: fiber.StatusForbidden,
-		Ctx:    ctx,
-		Error:  err,
+		Err:    err,
 	}
 }
 
-func UnauthorizedError(ctx *fiber.Ctx, err error) *RouteError {
-	return &RouteError{
+func UnauthorizedError(err error) RouteError {
+	return RouteError{
 		Status: fiber.StatusUnauthorized,
-		Ctx:    ctx,
-		Error:  err,
+		Err:    err,
 	}
 }

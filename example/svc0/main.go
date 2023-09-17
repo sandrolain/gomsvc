@@ -5,10 +5,8 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/go-playground/validator/v10"
 	"github.com/gofiber/fiber/v2"
 	"github.com/sandrolain/gomsvc/example/models"
-	"github.com/sandrolain/gomsvc/pkg/api"
 	h "github.com/sandrolain/gomsvc/pkg/api"
 	"github.com/sandrolain/gomsvc/pkg/api/client"
 	"github.com/sandrolain/gomsvc/pkg/redislib"
@@ -75,21 +73,21 @@ func server(cfg Config) {
 		return nil
 	})
 
-	h.FilterError(func(re *h.RouteError) *h.RouteError {
-		fmt.Printf("re: %v\n", re)
-		if re.Status == 400 {
-			errors := re.Error.(validator.ValidationErrors)
-			fmt.Printf("errors: %v\n", errors)
-			re.Body = []byte(fmt.Sprintf("Bad Request!!!! %v", re.Ctx.Request().URI()))
-		}
-		return re
-	})
+	// h.FilterError(func(re *h.RouteError) *h.RouteError {
+	// 	fmt.Printf("re: %v\n", re)
+	// 	if re.Status == 400 {
+	// 		errors := re.Error.(validator.ValidationErrors)
+	// 		fmt.Printf("errors: %v\n", errors)
+	// 		re.Body = []byte(fmt.Sprintf("Bad Request!!!! %v", re.Ctx.Request().URI()))
+	// 	}
+	// 	return re
+	// })
 
-	h.Handle("POST", "/hello", api.DataHandler(func(d *models.HelloData, c *fiber.Ctx) error {
-		fmt.Printf("d: %+v\n", d)
-		c.JSON(d)
-		return nil
-	}))
+	// h.Handle("POST", "/hello", api.DataHandler(func(d *models.HelloData, c *fiber.Ctx) error {
+	// 	fmt.Printf("d: %+v\n", d)
+	// 	c.JSON(d)
+	// 	return nil
+	// }))
 
 	h.ListenPort(cfg.Port)
 }

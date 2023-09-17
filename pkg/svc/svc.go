@@ -1,13 +1,16 @@
 package svc
 
 import (
+	"context"
 	"fmt"
 	"os"
 	"os/signal"
 	"regexp"
+	"runtime"
 	"strings"
 	"sync"
 	"syscall"
+	"time"
 
 	"log/slog"
 
@@ -62,10 +65,10 @@ func Service[C any](opts ServiceOptions, fn ServiceFunc[C]) {
 
 	go fn(config)
 	<-exitCh
-	exit()
+	exit(0)
 }
 
-func exit() {
+func exit(code int) {
 	var wg sync.WaitGroup
 	for _, fn := range exitCallbacks {
 		wg.Add(1)
@@ -75,8 +78,8 @@ func exit() {
 		}()
 	}
 	wg.Wait()
-	logger.Info("Exit service")
-	os.Exit(0)
+	logger.Info("Exit service", "code", code)
+	os.Exit(code)
 }
 
 type OnExitFunc func()
@@ -129,6 +132,15 @@ func Logger() *slog.Logger {
 func LoggerNamespace(ns string, args ...any) *slog.Logger {
 	args = append([]any{"ns", ns}, args...)
 	return logger.With(args...)
+}
+
+func Fatal(msg string, args ...interface{}) {
+	var pcs [1]uintptr
+	runtime.Callers(2, pcs[:]) // skip [Callers, Infof]
+	r := slog.NewRecord(time.Now(), slog.LevelError, msg, pcs[0])
+	r.Add(args...)
+	_ = logger.Handler().Handle(context.Background(), r)
+	exit(1)
 }
 
 func LogLevel(level string) {

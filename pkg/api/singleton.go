@@ -35,9 +35,24 @@ func Handle(method string, path string, handler Handler) *Route {
 	return singleServer.Handle(method, path, handler)
 }
 
-func V(version int) *Route {
+func Get[T any](path string, handler DataReceiver[T]) *Route {
 	initSingleServer()
-	return singleServer.V(version)
+	return singleServer.Handle("GET", path, DataHandler[T](handler))
+}
+
+func Post[T any](path string, handler DataReceiver[T]) *Route {
+	initSingleServer()
+	return singleServer.Handle("POST", path, DataHandler[T](handler))
+}
+
+func Put[T any](path string, handler DataReceiver[T]) *Route {
+	initSingleServer()
+	return singleServer.Handle("PUT", path, DataHandler[T](handler))
+}
+
+func Delete[T any](path string, handler DataReceiver[T]) *Route {
+	initSingleServer()
+	return singleServer.Handle("DELETE", path, DataHandler[T](handler))
 }
 
 func ListenAddr(addr string) {

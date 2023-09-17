@@ -20,22 +20,23 @@ func log(ctx context.Context, level slog.Level, msg string, args ...interface{})
 	_ = svc.Logger().Handler().Handle(ctx, r)
 }
 
-func InvalidArgument(msg ...string) error {
-	m := "Invalid Argument"
-	if len(msg) > 0 && msg[0] != "" {
-		m = msg[0]
+func getArgs(c codes.Code, def string, msg string, args []interface{}) (string, []interface{}, error) {
+	if msg == "" {
+		msg = def
 	}
-	e := status.Error(codes.InvalidArgument, m)
-	log(context.Background(), slog.LevelWarn, m, "err", e)
+	e := status.Error(c, msg)
+	args = append([]interface{}{"err", e}, args...)
+	return msg, args, e
+}
+
+func InvalidArgument(msg string, args ...interface{}) error {
+	m, args, e := getArgs(codes.InvalidArgument, "Invalid Argument", msg, args)
+	log(context.Background(), slog.LevelWarn, m, args...)
 	return e
 }
 
-func InternalError(msg ...string) error {
-	m := "Internal Error"
-	if len(msg) > 0 && msg[0] != "" {
-		m = msg[0]
-	}
-	e := status.Error(codes.Internal, m)
-	log(context.Background(), slog.LevelError, m, "err", e)
+func InternalError(msg string, args ...interface{}) error {
+	m, args, e := getArgs(codes.Internal, "Internal Error", msg, args)
+	log(context.Background(), slog.LevelError, m, args...)
 	return e
 }

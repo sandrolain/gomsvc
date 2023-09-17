@@ -17,6 +17,11 @@ func timeoutCtx() (context.Context, context.CancelFunc) {
 	return context.WithTimeout(context.Background(), timeout*time.Second)
 }
 
+type EnvConfig struct {
+	Address  string `env:"REDIS_ADDR" validate:"required"`
+	Password string `env:"REDIS_PWD" validate:"required"`
+}
+
 type Config struct {
 	Address  string        `validation:"required"`
 	Password string        `validation:"required"`

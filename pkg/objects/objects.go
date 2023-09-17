@@ -8,19 +8,19 @@ import (
 	"github.com/minio/minio-go/v7/pkg/credentials"
 )
 
-type EnvObjectsConfig struct {
-	ObjectsEndpoint     string `env:"OBJECTS_ENDPOINT" validate:"required"`
-	ObjectsAccessId     string `env:"OBJECTS_ACCESS_ID" validate:"required"`
-	ObjectsAccessSecret string `env:"OBJECTS_ACCESS_SECRET" validate:"required"`
-	ObjectsSSL          bool   `env:"OBJECTS_SSL"`
+type EnvConfig struct {
+	Endpoint     string `env:"OBJECTS_ENDPOINT" validate:"required"`
+	AccessId     string `env:"OBJECTS_ACCESS_ID" validate:"required"`
+	AccessSecret string `env:"OBJECTS_ACCESS_SECRET" validate:"required"`
+	SSL          bool   `env:"OBJECTS_SSL"`
 }
 
-func (e *EnvObjectsConfig) GetObjectsClientConfig() Config {
+func (e *EnvConfig) GetClientConfig() Config {
 	return Config{
-		Endpoint:     e.ObjectsEndpoint,
-		AccessId:     e.ObjectsAccessId,
-		AccessSecret: e.ObjectsAccessSecret,
-		SSL:          e.ObjectsSSL,
+		Endpoint:     e.Endpoint,
+		AccessId:     e.AccessId,
+		AccessSecret: e.AccessSecret,
+		SSL:          e.SSL,
 	}
 }
 

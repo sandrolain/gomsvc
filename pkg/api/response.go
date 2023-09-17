@@ -5,24 +5,15 @@ type ResponseError struct {
 	Message string `json:"message"`
 }
 
-type ResponseEnvelope[T any] struct {
-	Success bool          `json:"success"`
-	Payload T             `json:"payload,omitempty"`
-	Error   ResponseError `json:"errors,omitempty"`
+type ResponseErrorEnvelope struct {
+	Error ResponseError `json:"errors,omitempty"`
 }
 
-func GetResponse[T any](payload T) ResponseEnvelope[T] {
-	return ResponseEnvelope[T]{
-		Success: true,
-		Payload: payload,
-	}
-}
-
-func GetResponseForError(err RouteError) ResponseEnvelope[interface{}] {
-	return ResponseEnvelope[interface{}]{
+func GetResponseForError(err RouteError) ResponseErrorEnvelope {
+	return ResponseErrorEnvelope{
 		Error: ResponseError{
 			Code:    err.Code,
-			Message: err.Error.Error(),
+			Message: err.Error(),
 		},
 	}
 }

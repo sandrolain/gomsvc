@@ -13,8 +13,8 @@ import (
 	"google.golang.org/grpc/reflection"
 )
 
-type EnvGrpcConfig struct {
-	GrpcPort int `env:"GRPC_PORT" validate:"required"`
+type EnvConfig struct {
+	Port int `env:"GRPC_PORT" validate:"required"`
 }
 
 type ServerOptions struct {

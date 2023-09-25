@@ -8,20 +8,37 @@ import (
 	"log/slog"
 
 	"github.com/grpc-ecosystem/go-grpc-middleware/v2/interceptors/logging"
+	"github.com/sandrolain/gomsvc/pkg/certlib"
 	"github.com/sandrolain/gomsvc/pkg/svc"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/reflection"
 )
 
-type EnvConfig struct {
-	Port int `env:"GRPC_PORT" validate:"required"`
+type EnvServerConfig struct {
+	Port int    `env:"GRPC_PORT" validate:"required,numeric"`
+	Cert string `env:"GRPC_CERT" validate:"required,filepath"`
+	Key  string `env:"GRPC_KEY" validate:"required,filepath"`
+	CA   string `env:"GRPC_CA" validate:"required,filepath"`
+}
+
+type EnvClientConfig struct {
+	Cert string `env:"GRPC_CERT" validate:"required,file"`
+	Key  string `env:"GRPC_KEY" validate:"required,file"`
+	CA   string `env:"GRPC_CA" validate:"required,file"`
+}
+
+type Credentials struct {
+	CertPath string
+	KeyPath  string
+	CAPath   string
 }
 
 type ServerOptions struct {
-	Port    int
-	Desc    *grpc.ServiceDesc
-	Handler interface{}
-	Logger  *slog.Logger
+	Port        int
+	Desc        *grpc.ServiceDesc
+	Handler     interface{}
+	Logger      *slog.Logger
+	Credentials Credentials
 }
 
 func interceptorLogger(l *slog.Logger) logging.Logger {
@@ -42,7 +59,16 @@ func CreateServer(opts ServerOptions) error {
 	loggerOpts := []logging.Option{
 		logging.WithLogOnEvents(logging.StartCall, logging.FinishCall),
 	}
+	cred, err := certlib.LoadServerTLSCredentials(certlib.ServerTLSConfigArgs[string]{
+		Cert: opts.Credentials.CertPath,
+		Key:  opts.Credentials.KeyPath,
+		CA:   opts.Credentials.CAPath,
+	})
+	if err != nil {
+		return err
+	}
 	s := grpc.NewServer(
+		grpc.Creds(cred),
 		grpc.ChainUnaryInterceptor(
 			logging.UnaryServerInterceptor(interceptorLogger(logger), loggerOpts...),
 		),

@@ -18,15 +18,21 @@ func timeoutCtx() (context.Context, context.CancelFunc) {
 }
 
 type EnvConfig struct {
-	Address  string `env:"REDIS_ADDR" validate:"required"`
-	Password string `env:"REDIS_PWD" validate:"required"`
+	Host     string `env:"REDIS_HOST" validate:"required,hostname"`
+	Port     int    `env:"REDIS_PORT" validate:"required,numeric"`
+	Password string `env:"REDIS_PASSWORD" validate:"required"`
 }
 
 type Config struct {
-	Address  string        `validation:"required"`
+	Host     string        `validation:"required,hostname"`
+	Port     int           `validation:"required,numeric"`
 	Password string        `validation:"required"`
 	Timeout  time.Duration `validation:"required"`
 	TLS      *tls.Config
+}
+
+func FormatUri(cfg Config) string {
+	return fmt.Sprintf("redis://:%s@%s:%d", cfg.Password, cfg.Host, cfg.Port)
 }
 
 func Connect(config Config) (err error) {
@@ -37,8 +43,10 @@ func Connect(config Config) (err error) {
 		return
 	}
 
+	addr := fmt.Sprintf("%v:%v", config.Host, config.Port)
+
 	redisClient = redis.NewClient(&redis.Options{
-		Addr:      config.Address,
+		Addr:      addr,
 		Password:  config.Password,
 		DB:        0, // use default DB
 		TLSConfig: config.TLS,

@@ -7,7 +7,7 @@ import (
 )
 
 func TestGenerateCA(t *testing.T) {
-	caCert, caTlsCert, err := GenerateCA(pkix.Name{
+	caCert, _, caTlsCert, err := GenerateCA(pkix.Name{
 		CommonName:    "Test",
 		Organization:  []string{"Test"},
 		Country:       []string{"IT"},
@@ -20,7 +20,7 @@ func TestGenerateCA(t *testing.T) {
 		t.Fatalf(err.Error())
 	}
 
-	_, tlsCert, err := GenerateCertificate(pkix.Name{
+	_, _, tlsCert, err := GenerateCertificate(pkix.Name{
 		CommonName:    "Test",
 		Organization:  []string{"Test"},
 		Country:       []string{"IT"},

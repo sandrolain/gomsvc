@@ -5,26 +5,23 @@ import (
 	"log/slog"
 
 	"github.com/grpc-ecosystem/go-grpc-middleware/v2/interceptors/logging"
+	"github.com/sandrolain/gomsvc/pkg/certlib"
 	"github.com/sandrolain/gomsvc/pkg/svc"
 	"google.golang.org/grpc"
-	"google.golang.org/grpc/credentials/insecure"
 )
 
 type ClientOptions struct {
-	Url    string
-	CAFile string
-	Host   string
-	Logger *slog.Logger
+	Url         string
+	Logger      *slog.Logger
+	Credentials Credentials
 }
 
 func CreateClient[T any](new func(grpc.ClientConnInterface) T, opts ClientOptions) (res T, err error) {
-	// creds, err := credentials.NewClientTLSFromFile(opts.CAFile, opts.Host)
-	// if err != nil {
-	// 	err = fmt.Errorf("failed to create TLS credentials: %w", err)
-	// 	return
-	// }
-
-	creds := insecure.NewCredentials()
+	creds, err := certlib.LoadClientTLSCredentials(certlib.ClientTLSConfigArgs[string]{
+		Cert: opts.Credentials.CertPath,
+		Key:  opts.Credentials.KeyPath,
+		CA:   opts.Credentials.CAPath,
+	})
 
 	logger := opts.Logger
 	if logger == nil {

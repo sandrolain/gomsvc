@@ -7,6 +7,7 @@ import (
 
 	"log/slog"
 
+	"github.com/go-playground/validator/v10"
 	"github.com/grpc-ecosystem/go-grpc-middleware/v2/interceptors/logging"
 	"github.com/sandrolain/gomsvc/pkg/certlib"
 	"github.com/sandrolain/gomsvc/pkg/svc"
@@ -28,17 +29,17 @@ type EnvClientConfig struct {
 }
 
 type Credentials struct {
-	CertPath string
-	KeyPath  string
-	CAPath   string
+	CertPath string `validate:"required,file"`
+	KeyPath  string `validate:"required,file"`
+	CAPath   string `validate:"required,file"`
 }
 
 type ServerOptions struct {
-	Port        int
-	Desc        *grpc.ServiceDesc
-	Handler     interface{}
+	Port        int               `validate:"required,number"`
+	Desc        *grpc.ServiceDesc `validate:"required"`
+	Handler     interface{}       `validate:"required"`
 	Logger      *slog.Logger
-	Credentials Credentials
+	Credentials Credentials `validate:"required"`
 }
 
 func interceptorLogger(l *slog.Logger) logging.Logger {
@@ -58,6 +59,10 @@ func CreateServer(opts ServerOptions) error {
 	}
 	loggerOpts := []logging.Option{
 		logging.WithLogOnEvents(logging.StartCall, logging.FinishCall),
+	}
+	err = validator.New().Struct(opts)
+	if err != nil {
+		return err
 	}
 	cred, err := certlib.LoadServerTLSCredentials(certlib.ServerTLSConfigArgs[string]{
 		Cert: opts.Credentials.CertPath,

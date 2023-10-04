@@ -35,6 +35,12 @@ func InvalidArgument(msg string, args ...interface{}) error {
 	return e
 }
 
+func NotFound(msg string, args ...interface{}) error {
+	m, args, e := getArgs(codes.NotFound, "Not Found", msg, args)
+	log(context.Background(), slog.LevelWarn, m, args...)
+	return e
+}
+
 func InternalError(msg string, args ...interface{}) error {
 	m, args, e := getArgs(codes.Internal, "Internal Error", msg, args)
 	log(context.Background(), slog.LevelError, m, args...)

@@ -11,6 +11,15 @@ type DataRequest[T any] struct {
 	Session *session.Session
 }
 
+func SessionValue[R any, T any](r DataRequest[T], key string) (res R, ok bool) {
+	if r.Session == nil {
+		return
+	}
+	v := r.Session.Get(key)
+	res, ok = v.(R)
+	return
+}
+
 type DataReceiver[T any] func(req DataRequest[T]) error
 
 func DataHandler[T any](handler DataReceiver[T]) Handler {

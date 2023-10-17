@@ -65,10 +65,10 @@ func Service[C any](opts ServiceOptions, fn ServiceFunc[C]) {
 
 	go fn(config)
 	<-exitCh
-	exit(0)
+	Exit(0)
 }
 
-func exit(code int) {
+func Exit(code int) {
 	var wg sync.WaitGroup
 	for _, fn := range exitCallbacks {
 		wg.Add(1)
@@ -140,7 +140,7 @@ func Fatal(msg string, args ...interface{}) {
 	r := slog.NewRecord(time.Now(), slog.LevelError, msg, pcs[0])
 	r.Add(args...)
 	_ = logger.Handler().Handle(context.Background(), r)
-	exit(1)
+	Exit(1)
 }
 
 func LogLevel(level string) {

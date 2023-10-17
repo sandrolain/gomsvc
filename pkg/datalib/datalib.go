@@ -15,7 +15,7 @@ func DefaultIfEmpty[T any](val *T, def T) *T {
 	if val == nil {
 		return &def
 	}
-	if reflect.ValueOf(val).IsZero() {
+	if reflect.ValueOf(*val).IsZero() {
 		return &def
 	}
 	return val

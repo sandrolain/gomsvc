@@ -4,13 +4,14 @@ import (
 	"bytes"
 	"crypto/rand"
 	"crypto/rsa"
+	"crypto/sha1"
 	"crypto/tls"
 	"crypto/x509"
 	"crypto/x509/pkix"
 	"encoding/pem"
 	"errors"
+	"fmt"
 	"math/big"
-	"net"
 	"os"
 	"time"
 
@@ -22,83 +23,127 @@ const (
 	rsaType = "RSA PRIVATE KEY"
 )
 
-func GetCertificateFromFile(certPath string, keyPath string) (cert *x509.Certificate, key *rsa.PrivateKey, tlsCert *tls.Certificate, err error) {
+type Certificate struct {
+	Cert    *x509.Certificate
+	Key     *rsa.PrivateKey
+	TlsCert *tls.Certificate
+}
+
+func GetCertificateFromFile(certPath string, keyPath string) (res Certificate, err error) {
 	r, err := os.ReadFile(certPath)
 	if err != nil {
 		return
 	}
-	block, _ := pem.Decode(r)
-	if block.Type != crtType {
-		err = errors.New("invalid certificate ype")
-		return
-	}
-	cert, err = x509.ParseCertificate(block.Bytes)
-	if err != nil {
-		return
-	}
-
 	kr, err := os.ReadFile(keyPath)
 	if err != nil {
 		return
 	}
-	kblock, _ := pem.Decode(kr)
-	if kblock.Type != rsaType {
-		err = errors.New("invalid key type")
+	return GetCertificate(r, kr)
+}
+
+func GetCertificate(certBytes []byte, keyBytes []byte) (res Certificate, err error) {
+	block, _ := pem.Decode(certBytes)
+	if block.Type != crtType {
+		err = errors.New("invalid certificate ype")
 		return
 	}
-	key, err = x509.ParsePKCS1PrivateKey(kblock.Bytes)
+	cert, err := x509.ParseCertificate(block.Bytes)
 	if err != nil {
 		return
 	}
 
-	res := tls.Certificate{}
-	res.Certificate = append(res.Certificate, cert.Raw)
-	res.PrivateKey = key
+	kblock, _ := pem.Decode(keyBytes)
+	if kblock.Type != rsaType {
+		err = errors.New("invalid key type")
+		return
+	}
+	key, err := x509.ParsePKCS1PrivateKey(kblock.Bytes)
+	if err != nil {
+		return
+	}
 
-	tlsCert = &res
+	tlsCert := tls.Certificate{}
+	tlsCert.Certificate = append(tlsCert.Certificate, cert.Raw)
+	tlsCert.PrivateKey = key
+
+	res.Cert = cert
+	res.Key = key
+	res.TlsCert = &tlsCert
 
 	return
 }
 
-func GenerateCertificate(subject pkix.Name, ca *x509.Certificate, caCert *tls.Certificate) (cert *x509.Certificate, key *rsa.PrivateKey, tlsCert *tls.Certificate, err error) {
+func hashPublicKey(key *rsa.PublicKey) ([]byte, error) {
+	b, err := x509.MarshalPKIXPublicKey(key)
+	if err != nil {
+		return nil, fmt.Errorf("Unable to hash key: %s", err)
+	}
+
+	h := sha1.New()
+	h.Write(b)
+	return h.Sum(nil), nil
+}
+
+type CertificateArgs struct {
+	Subject  pkix.Name
+	CA       *x509.Certificate
+	CACert   *tls.Certificate
+	Duration time.Duration
+}
+
+func GenerateCertificate(args CertificateArgs) (res Certificate, err error) {
 	// set up our server certificate
-	cert = &x509.Certificate{
-		SerialNumber: big.NewInt(time.Now().Unix()),
-		Subject:      subject,
-		IPAddresses:  []net.IP{net.IPv4(127, 0, 0, 1), net.IPv6loopback},
+	cert := &x509.Certificate{
+		SerialNumber: big.NewInt(time.Now().UnixMilli()),
+		Subject:      args.Subject,
 		NotBefore:    time.Now(),
-		NotAfter:     time.Now().AddDate(10, 0, 0), // 10 years
+		NotAfter:     time.Now().Add(args.Duration),
 		SubjectKeyId: []byte{1, 2, 3, 4, 6},
 		ExtKeyUsage:  []x509.ExtKeyUsage{x509.ExtKeyUsageClientAuth, x509.ExtKeyUsageServerAuth},
 		KeyUsage:     x509.KeyUsageDigitalSignature,
 	}
 
-	key, err = rsa.GenerateKey(rand.Reader, 4096)
+	key, err := rsa.GenerateKey(rand.Reader, 4096)
 	if err != nil {
 		return
 	}
 
-	certBytes, err := x509.CreateCertificate(rand.Reader, cert, ca, &key.PublicKey, caCert.PrivateKey)
+	keyID, err := hashPublicKey(&key.PublicKey)
 	if err != nil {
 		return
 	}
 
-	res := tls.Certificate{}
-	res.Certificate = append(res.Certificate, certBytes)
-	res.PrivateKey = key
+	cert.SubjectKeyId = keyID
+	cert.PublicKey = key.Public()
 
-	tlsCert = &res
+	certBytes, err := x509.CreateCertificate(rand.Reader, cert, args.CA, &key.PublicKey, args.CACert.PrivateKey)
+	if err != nil {
+		return
+	}
+
+	tlsCert := tls.Certificate{}
+	tlsCert.Certificate = append(tlsCert.Certificate, certBytes)
+	tlsCert.PrivateKey = key
+
+	res.Cert = cert
+	res.Key = key
+	res.TlsCert = &tlsCert
 
 	return
 }
 
-func GenerateCA(subject pkix.Name) (cert *x509.Certificate, key *rsa.PrivateKey, tlsCert *tls.Certificate, err error) {
+type CAArgs struct {
+	Subject  pkix.Name
+	Duration time.Duration
+}
+
+func GenerateCA(args CAArgs) (res Certificate, err error) {
 	// set up our CA certificate
-	cert = &x509.Certificate{
-		SerialNumber:          big.NewInt(time.Now().Unix()),
-		Subject:               subject,
+	cert := &x509.Certificate{
+		SerialNumber:          big.NewInt(time.Now().UnixMilli()),
+		Subject:               args.Subject,
 		NotBefore:             time.Now(),
-		NotAfter:              time.Now().AddDate(10, 0, 0),
+		NotAfter:              time.Now().Add(args.Duration),
 		IsCA:                  true,
 		ExtKeyUsage:           []x509.ExtKeyUsage{x509.ExtKeyUsageClientAuth, x509.ExtKeyUsageServerAuth},
 		KeyUsage:              x509.KeyUsageDigitalSignature | x509.KeyUsageCertSign,
@@ -106,7 +151,7 @@ func GenerateCA(subject pkix.Name) (cert *x509.Certificate, key *rsa.PrivateKey,
 	}
 
 	// create our private and public key
-	key, err = rsa.GenerateKey(rand.Reader, 4096)
+	key, err := rsa.GenerateKey(rand.Reader, 4096)
 	if err != nil {
 		return
 	}
@@ -117,11 +162,14 @@ func GenerateCA(subject pkix.Name) (cert *x509.Certificate, key *rsa.PrivateKey,
 		return
 	}
 
-	res := tls.Certificate{}
-	res.Certificate = append(res.Certificate, caBytes)
-	res.PrivateKey = key
+	tlsCert := tls.Certificate{}
+	tlsCert.Certificate = append(tlsCert.Certificate, caBytes)
+	tlsCert.PrivateKey = key
 
-	tlsCert = &res
+	res.Cert = cert
+	res.Key = key
+	res.TlsCert = &tlsCert
+
 	return
 }
 

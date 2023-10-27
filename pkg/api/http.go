@@ -35,29 +35,45 @@ func New(config Config) *Server {
 func getFiberErrorHandler(s *Server) func(ctx *fiber.Ctx, err error) error {
 	return func(ctx *fiber.Ctx, err error) error {
 		// Status code defaults to 500
-		var code int
 
-		// Retrieve the custom status code if it's a *fiber.Error
-		e, ok := err.(*fiber.Error)
-		if ok {
-			code = e.Code
-			if code < 400 {
-				return nil
+		routeErr, ok := err.(RouteError)
+		if !ok {
+			var code int
+
+			// Retrieve the custom status code if it's a *fiber.Error
+			e, ok := err.(*fiber.Error)
+			if ok {
+				code = e.Code
+				if code < 400 {
+					return nil
+				}
+			}
+
+			if code == 0 {
+				code = fiber.StatusInternalServerError
+			}
+
+			routeErr = RouteError{
+				Code:   fmt.Sprintf("%v", code),
+				Err:    err,
+				Status: code,
 			}
 		}
 
-		if code == 0 {
-			code = fiber.StatusInternalServerError
+		if s.errorFilter != nil {
+			routeErr = s.errorFilter(routeErr)
 		}
 
-		// Send custom error page
-		err = handleRouteError(s, RouteError{
-			Code:   fmt.Sprintf("%v", code),
-			Err:    err,
-			Status: code,
-		}, ctx)
+		ctx.Status(routeErr.Status)
 
-		if err != nil {
+		var sendErr error
+		if routeErr.Body != nil && len(routeErr.Body) > 0 {
+			sendErr = ctx.Send(routeErr.Body)
+		} else {
+			sendErr = ctx.JSON(GetResponseForError(routeErr))
+		}
+
+		if sendErr != nil {
 			return ctx.Status(fiber.StatusInternalServerError).SendString("Internal Server Error")
 		}
 

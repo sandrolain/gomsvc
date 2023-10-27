@@ -20,7 +20,8 @@ func TestGenerateCA(t *testing.T) {
 		t.Fatalf(err.Error())
 	}
 
-	_, _, tlsCert, err := GenerateCertificate(pkix.Name{
+	_, _, tlsCert, err := GenerateCertificate(CertificateArgs{
+    Name: pkix.Name{
 		CommonName:    "Test",
 		Organization:  []string{"Test"},
 		Country:       []string{"IT"},
@@ -28,7 +29,7 @@ func TestGenerateCA(t *testing.T) {
 		Locality:      []string{"Rome"},
 		StreetAddress: []string{""},
 		PostalCode:    []string{""},
-	}, caCert, caTlsCert)
+	}, CACert: caCert, CA: caTlsCert)
 
 	if err != nil {
 		t.Fatalf(err.Error())

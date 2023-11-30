@@ -11,6 +11,10 @@ type DataRequest[T any] struct {
 	Session *session.Session
 }
 
+func (r *DataRequest[T]) JSON(data interface{}) error {
+	return r.Ctx.JSON(data)
+}
+
 func SessionValue[R any, T any](r DataRequest[T], key string) (res R, ok bool) {
 	if r.Session == nil {
 		return

@@ -85,22 +85,26 @@ func hashPublicKey(key *rsa.PublicKey) ([]byte, error) {
 }
 
 type CertificateArgs struct {
-	Subject  pkix.Name
-	CA       *x509.Certificate
-	CACert   *tls.Certificate
-	Duration time.Duration
+	Subject        pkix.Name
+	CA             *x509.Certificate
+	CACert         *tls.Certificate
+	Duration       time.Duration
+	EmailAddresses []string
+	DNSNames       []string
 }
 
 func GenerateCertificate(args CertificateArgs) (res Certificate, err error) {
 	// set up our server certificate
 	cert := &x509.Certificate{
-		SerialNumber: big.NewInt(time.Now().UnixMilli()),
-		Subject:      args.Subject,
-		NotBefore:    time.Now(),
-		NotAfter:     time.Now().Add(args.Duration),
-		SubjectKeyId: []byte{1, 2, 3, 4, 6},
-		ExtKeyUsage:  []x509.ExtKeyUsage{x509.ExtKeyUsageClientAuth, x509.ExtKeyUsageServerAuth},
-		KeyUsage:     x509.KeyUsageDigitalSignature,
+		SerialNumber:   big.NewInt(time.Now().UnixMilli()),
+		Subject:        args.Subject,
+		NotBefore:      time.Now(),
+		NotAfter:       time.Now().Add(args.Duration),
+		SubjectKeyId:   []byte{1, 2, 3, 4, 6},
+		ExtKeyUsage:    []x509.ExtKeyUsage{x509.ExtKeyUsageClientAuth, x509.ExtKeyUsageServerAuth},
+		KeyUsage:       x509.KeyUsageDigitalSignature,
+		EmailAddresses: args.EmailAddresses,
+		DNSNames:       args.DNSNames,
 	}
 
 	key, err := rsa.GenerateKey(rand.Reader, 4096)
@@ -133,8 +137,10 @@ func GenerateCertificate(args CertificateArgs) (res Certificate, err error) {
 }
 
 type CAArgs struct {
-	Subject  pkix.Name
-	Duration time.Duration
+	Subject        pkix.Name
+	Duration       time.Duration
+	EmailAddresses []string
+	DNSNames       []string
 }
 
 func GenerateCA(args CAArgs) (res Certificate, err error) {
@@ -148,6 +154,8 @@ func GenerateCA(args CAArgs) (res Certificate, err error) {
 		ExtKeyUsage:           []x509.ExtKeyUsage{x509.ExtKeyUsageClientAuth, x509.ExtKeyUsageServerAuth},
 		KeyUsage:              x509.KeyUsageDigitalSignature | x509.KeyUsageCertSign,
 		BasicConstraintsValid: true,
+		EmailAddresses:        args.EmailAddresses,
+		DNSNames:              args.DNSNames,
 	}
 
 	// create our private and public key

@@ -16,9 +16,7 @@ import (
 )
 
 type Config struct {
-	Port      int    `env:"PORT" validate:"required"`
-	RedisAddr string `env:"REDIS_ADDR" validate:"required"`
-	RedisPwd  string `env:"REDIS_PWD" validate:"required"`
+	Redis redislib.EnvClientConfig
 }
 
 func main() {
@@ -42,18 +40,22 @@ type Data struct {
 }
 
 func redis(cfg Config) {
-	redislib.Connect(redislib.Config{
-		Address:  cfg.RedisAddr,
-		Password: cfg.RedisPwd,
-	})
+	svc.PanicIfError(
+		redislib.Connect(redislib.ClientOptionsFromEnvConfig(cfg.Redis)),
+	)
 
 	// pub := redislib.Publisher[Data]("signup", redislib.PublisherConfig{Type: "signup"})
-	pub := redislib.StreamSender[Data]("mystream", redislib.SenderConfig{Type: "signup"})
+	pub := svc.PanicWithError(
+		redislib.NewStreamPublisher[Data](redislib.StreamPublisherConfig{
+			Stream: "mystream",
+			Type:   "signup",
+		}),
+	)
 
 	t := time.NewTicker(time.Millisecond * 100)
 	for {
 		<-t.C
-		err := pub(Data{
+		err := pub.Publish(Data{
 			Firstname: "John",
 			Lastname:  "Doe",
 		})
@@ -89,7 +91,7 @@ func server(cfg Config) {
 	// 	return nil
 	// }))
 
-	h.ListenPort(cfg.Port)
+	// h.ListenPort()
 }
 
 type Car struct {

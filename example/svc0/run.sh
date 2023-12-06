@@ -1,8 +1,11 @@
 #!/bin/bash
 
-export PORT=3000
-export REDIS_ADDR="localhost:6379"
-export REDIS_PWD="mypassword"
-export LOG_LEVEL="debug"
+SCRIPT=$(realpath "$0")
+WD=$(dirname "$SCRIPT")
 
-go run ./main.go
+export LOG_LEVEL="debug"
+export REDIS_HOST=localhost
+export REDIS_PORT=6379
+export REDIS_PASSWORD=$(kubectl get secret --namespace redis redis -o jsonpath="{.data.redis-password}" | base64 -d)
+
+go run "$WD/main.go"

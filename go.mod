@@ -6,6 +6,7 @@ toolchain go1.21.0
 
 require (
 	github.com/caarlos0/env/v9 v9.0.0
+	github.com/eclipse/paho.mqtt.golang v1.4.3
 	github.com/go-playground/validator/v10 v10.16.0
 	github.com/go-resty/resty/v2 v2.7.0
 	github.com/gofiber/fiber/v2 v2.50.0
@@ -15,6 +16,7 @@ require (
 	github.com/grpc-ecosystem/go-grpc-middleware/v2 v2.0.1
 	github.com/jinzhu/copier v0.4.0
 	github.com/jordan-wright/email v4.0.1-0.20210109023952-943e75fe5223+incompatible
+	github.com/k0kubun/pp/v3 v3.2.0
 	github.com/lmittmann/tint v1.0.3
 	github.com/minio/minio-go/v7 v7.0.63
 	github.com/redis/go-redis/v9 v9.3.0
@@ -40,6 +42,7 @@ require (
 	github.com/gofrs/uuid/v5 v5.0.0 // indirect
 	github.com/golang/protobuf v1.5.3 // indirect
 	github.com/golang/snappy v0.0.4 // indirect
+	github.com/gorilla/websocket v1.5.0 // indirect
 	github.com/jackc/pgpassfile v1.0.0 // indirect
 	github.com/jackc/pgservicefile v0.0.0-20221227161230-091c0ba34f0a // indirect
 	github.com/jackc/pgx/v5 v5.5.0 // indirect

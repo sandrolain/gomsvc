@@ -44,7 +44,7 @@ var globalConfig interface{}
 func Service[C any](opts ServiceOptions, fn ServiceFunc[C]) {
 	v := validator.New()
 	PanicIfError(v.Struct(opts))
-	serviceUuid = PanicWithError(typeid.New(cleanTypeIdName(opts.Name))).String()
+	serviceUuid = PanicWithError(typeid.WithPrefix(cleanTypeIdName(opts.Name))).String()
 	options = &opts
 
 	env := PanicWithError(GetEnv[DefaultEnv]())
@@ -136,6 +136,16 @@ func Logger() *slog.Logger {
 func LoggerNamespace(ns string, args ...any) *slog.Logger {
 	args = append([]any{"ns", ns}, args...)
 	return logger.With(args...)
+}
+
+func Error(msg string, err error, args ...any) error {
+	var pcs [1]uintptr
+	runtime.Callers(2, pcs[:]) // skip [Callers, Infof]
+	r := slog.NewRecord(time.Now(), slog.LevelError, msg, pcs[0])
+	r.Add("err", err)
+	r.Add(args...)
+	_ = logger.Handler().Handle(context.Background(), r)
+	return fmt.Errorf("%s: %w", msg, err)
 }
 
 func Fatal(msg string, args ...interface{}) {

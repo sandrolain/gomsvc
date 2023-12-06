@@ -1,17 +1,14 @@
 package main
 
 import (
-	"fmt"
-
 	"github.com/sandrolain/gomsvc/example/models"
+	"github.com/sandrolain/gomsvc/pkg/devlib"
 	"github.com/sandrolain/gomsvc/pkg/redislib"
 	"github.com/sandrolain/gomsvc/pkg/svc"
 )
 
 type Config struct {
-	Port      int    `env:"PORT" validate:"required"`
-	RedisAddr string `env:"REDIS_ADDR" validate:"required"`
-	RedisPwd  string `env:"REDIS_PWD" validate:"required"`
+	Redis redislib.EnvClientConfig
 }
 
 func main() {
@@ -19,23 +16,28 @@ func main() {
 		Name:    "svcb",
 		Version: "1.2.3",
 	}, func(cfg Config) {
-		fmt.Printf("cfg: %v\n", cfg)
+		svc.PanicIfError(
+			redislib.Connect(redislib.ClientOptionsFromEnvConfig(cfg.Redis)),
+		)
 
-		redislib.Connect(redislib.Config{
-			Address:  cfg.RedisAddr,
-			Password: cfg.RedisPwd,
-		})
+		cs := svc.PanicWithError(
+			redislib.NewStreamConsumer[models.MessageData](redislib.StreamConsumerConfig{
+				Stream:   "mystream",
+				Group:    "group1",
+				Consumer: svc.ServiceName(),
+			}),
+		)
 
-		// redislib.Subscribe("signup", func(payload redislib.Message[models.MessageData]) error {
-		// 	svc.Logger().Debug("Message received", "payload", payload)
-		// 	return nil
-		// }, func(err error) {
-		// 	fmt.Printf("err: %v\n", err)
-		// })
-		redislib.StreamConsumer("mystream", "group1", svc.ServiceName(), func(payload redislib.Message[models.MessageData]) {
-			svc.Logger().Debug("Message received", "payload", payload)
-		}, func(err error) {
-			fmt.Printf("err: %v\n", err)
-		})
+		cs.Emitter.Subscribe(
+			func(m *redislib.Message[models.MessageData]) error {
+				devlib.P(m)
+				return nil
+			},
+			func(err error) {
+				devlib.P(err)
+			},
+		)
+
+		svc.PanicIfError(cs.Consume())
 	})
 }

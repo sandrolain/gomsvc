@@ -7,35 +7,40 @@ import (
 )
 
 func TestGenerateCA(t *testing.T) {
-	caCert, _, caTlsCert, err := GenerateCA(pkix.Name{
-		CommonName:    "Test",
-		Organization:  []string{"Test"},
-		Country:       []string{"IT"},
-		Province:      []string{"Rome"},
-		Locality:      []string{"Rome"},
-		StreetAddress: []string{""},
-		PostalCode:    []string{""},
+	caCert, err := GenerateCA(CAArgs{
+		Subject: pkix.Name{
+			CommonName:    "Test",
+			Organization:  []string{"Test"},
+			Country:       []string{"IT"},
+			Province:      []string{"Rome"},
+			Locality:      []string{"Rome"},
+			StreetAddress: []string{""},
+			PostalCode:    []string{""},
+		},
 	})
 	if err != nil {
 		t.Fatalf(err.Error())
 	}
 
-	_, _, tlsCert, err := GenerateCertificate(CertificateArgs{
-    Name: pkix.Name{
-		CommonName:    "Test",
-		Organization:  []string{"Test"},
-		Country:       []string{"IT"},
-		Province:      []string{"Rome"},
-		Locality:      []string{"Rome"},
-		StreetAddress: []string{""},
-		PostalCode:    []string{""},
-	}, CACert: caCert, CA: caTlsCert)
+	cert, err := GenerateCertificate(CertificateArgs{
+		Subject: pkix.Name{
+			CommonName:    "Test",
+			Organization:  []string{"Test"},
+			Country:       []string{"IT"},
+			Province:      []string{"Rome"},
+			Locality:      []string{"Rome"},
+			StreetAddress: []string{""},
+			PostalCode:    []string{""},
+		},
+		CACert: caCert.TlsCert,
+		CA:     caCert.Cert,
+	})
 
 	if err != nil {
 		t.Fatalf(err.Error())
 	}
 
-	certBytes, keyBytes, err := EncodePEM(tlsCert)
+	certBytes, keyBytes, err := EncodePEM(cert.TlsCert)
 
 	if err != nil {
 		t.Fatalf(err.Error())

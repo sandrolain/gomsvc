@@ -172,6 +172,10 @@ func LogLevel(level string) {
 	}
 }
 
+func ServiceID() string {
+	return serviceUuid
+}
+
 func ServiceName() string {
 	return options.Name
 }

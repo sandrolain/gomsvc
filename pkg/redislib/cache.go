@@ -14,6 +14,17 @@ func (k *Key) String() string {
 	return strings.Join(*k, ":")
 }
 
+func SetNX(key Key, ttl time.Duration, value interface{}) (err error) {
+	ctx, cancel := timeoutCtx()
+	defer cancel()
+	b, err := msgpack.Marshal(&value)
+	if err != nil {
+		return err
+	}
+	err = redisClient.SetNX(ctx, key.String(), b, ttl).Err()
+	return
+}
+
 func Set(key Key, ttl time.Duration, value interface{}) (err error) {
 	ctx, cancel := timeoutCtx()
 	defer cancel()

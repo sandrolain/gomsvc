@@ -22,7 +22,7 @@ func Publisher[T any](channel string, config PublisherConfig) func(T) error {
 		}
 		ctx, cancel := context.WithTimeout(context.Background(), to)
 		defer cancel()
-		t, err := typeid.WithPrefix(config.Type)
+		t, err := typeid.From(config.Type, "")
 		if err != nil {
 			return err
 		}

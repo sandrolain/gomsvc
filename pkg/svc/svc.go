@@ -44,7 +44,7 @@ var globalConfig interface{}
 func Service[C any](opts ServiceOptions, fn ServiceFunc[C]) {
 	v := validator.New()
 	PanicIfError(v.Struct(opts))
-	serviceUuid = PanicWithError(typeid.WithPrefix(cleanTypeIdName(opts.Name))).String()
+	serviceUuid = PanicWithError(typeid.From(cleanTypeIdName(opts.Name), "")).String()
 	options = &opts
 
 	env := PanicWithError(GetEnv[DefaultEnv]())

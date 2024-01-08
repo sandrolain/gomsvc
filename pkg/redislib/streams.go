@@ -45,7 +45,7 @@ func (s *StreamPublisher[T]) Publish(payload T) (err error) {
 	ctx, cancel := context.WithTimeout(context.Background(), s.timeout)
 	defer cancel()
 
-	t, e := typeid.WithPrefix(s.stream)
+	t, e := typeid.From(s.stream, "")
 	if e != nil {
 		return svc.Error("cannot generate message id", e)
 	}

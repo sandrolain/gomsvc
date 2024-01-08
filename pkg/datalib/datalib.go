@@ -3,6 +3,7 @@ package datalib
 import (
 	"reflect"
 
+	mapset "github.com/deckarep/golang-set/v2"
 	"github.com/jinzhu/copier"
 	"github.com/vincent-petithory/dataurl"
 )
@@ -44,4 +45,8 @@ func DecodeDataURI(uri string) (data []byte, ct string, err error) {
 	data = dataURL.Data
 	ct = dataURL.ContentType()
 	return
+}
+
+func NewSet[T comparable]() mapset.Set[T] {
+	return mapset.NewSet[T]()
 }

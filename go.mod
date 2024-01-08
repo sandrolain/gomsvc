@@ -6,7 +6,9 @@ toolchain go1.21.0
 
 require (
 	github.com/caarlos0/env/v9 v9.0.0
+	github.com/deckarep/golang-set/v2 v2.6.0
 	github.com/eclipse/paho.mqtt.golang v1.4.3
+	github.com/flytam/filenamify v1.2.0
 	github.com/go-playground/validator/v10 v10.16.0
 	github.com/go-resty/resty/v2 v2.7.0
 	github.com/gofiber/fiber/v2 v2.50.0

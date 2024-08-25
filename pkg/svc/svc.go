@@ -1,22 +1,16 @@
 package svc
 
 import (
-	"context"
-	"fmt"
 	"os"
 	"os/signal"
 	"regexp"
-	"runtime"
 	"strings"
 	"sync"
 	"syscall"
-	"time"
 
 	"log/slog"
 
-	"github.com/caarlos0/env/v9"
 	"github.com/go-playground/validator/v10"
-	"github.com/lmittmann/tint"
 	typeid "go.jetpack.io/typeid"
 )
 
@@ -27,6 +21,7 @@ var exitCallbacks = make([]OnExitFunc, 0)
 type DefaultEnv struct {
 	LogLevel  string `env:"LOG_LEVEL"`
 	LogFormat string `env:"LOG_FORMAT"`
+	LogColor  string `env:"LOG_COLOR"`
 }
 
 type ServiceOptions struct {
@@ -36,8 +31,6 @@ type ServiceOptions struct {
 type ServiceFunc[T any] func(T)
 
 var options *ServiceOptions
-var logger *slog.Logger
-var loggerLevel *slog.LevelVar
 
 var globalConfig interface{}
 
@@ -92,78 +85,8 @@ func OnExit(fn OnExitFunc) {
 	exitCallbacks = append(exitCallbacks, fn)
 }
 
-func GetEnv[T any]() (cfg T, err error) {
-	err = env.Parse(&cfg)
-	if err != nil {
-		return
-	}
-
-	err = validator.New(validator.WithRequiredStructEnabled()).Struct(cfg)
-	if err != nil {
-		return
-	}
-	return
-}
-
-func initLogger(env DefaultEnv) {
-	loggerLevel = new(slog.LevelVar)
-	LogLevel(env.LogLevel)
-	var handler slog.Handler
-	if strings.ToUpper(env.LogFormat) == "JSON" {
-		handler = slog.NewJSONHandler(os.Stdout, &slog.HandlerOptions{Level: loggerLevel, AddSource: true})
-	} else {
-		handler = tint.NewHandler(os.Stdout, &tint.Options{Level: loggerLevel, AddSource: true})
-		// handler = slog.NewTextHandler(os.Stdout, &slog.HandlerOptions{Level: loggerLevel})
-	}
-	logger = slog.New(handler)
-	slog.SetDefault(logger)
-}
-
 func Config[T any]() T {
 	return globalConfig.(T)
-}
-
-func Logger() *slog.Logger {
-	return logger
-}
-
-func LoggerNamespace(ns string, args ...any) *slog.Logger {
-	args = append([]any{"ns", ns}, args...)
-	return logger.With(args...)
-}
-
-func Error(msg string, err error, args ...any) error {
-	var pcs [1]uintptr
-	runtime.Callers(2, pcs[:]) // skip [Callers, Infof]
-	r := slog.NewRecord(time.Now(), slog.LevelError, msg, pcs[0])
-	r.Add("err", err)
-	r.Add(args...)
-	_ = logger.Handler().Handle(context.Background(), r)
-	return fmt.Errorf("%s: %w", msg, err)
-}
-
-func Fatal(msg string, args ...interface{}) {
-	var pcs [1]uintptr
-	runtime.Callers(2, pcs[:]) // skip [Callers, Infof]
-	r := slog.NewRecord(time.Now(), slog.LevelError, msg, pcs[0])
-	r.Add(args...)
-	_ = logger.Handler().Handle(context.Background(), r)
-	Exit(1)
-}
-
-func LogLevel(level string) {
-	switch strings.ToUpper(level) {
-	case "DEBUG":
-		loggerLevel.Set(slog.LevelDebug)
-	case "INFO":
-		loggerLevel.Set(slog.LevelInfo)
-	case "WARN":
-		loggerLevel.Set(slog.LevelWarn)
-	case "ERROR":
-		loggerLevel.Set(slog.LevelError)
-	default:
-		loggerLevel.Set(slog.LevelInfo)
-	}
 }
 
 func ServiceID() string {

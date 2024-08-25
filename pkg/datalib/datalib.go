@@ -50,3 +50,46 @@ func DecodeDataURI(uri string) (data []byte, ct string, err error) {
 func NewSet[T comparable]() mapset.Set[T] {
 	return mapset.NewSet[T]()
 }
+
+func MapSlice[T any, R any](s []T, f func(T) R) []R {
+	res := make([]R, len(s))
+	for i, item := range s {
+		res[i] = f(item)
+	}
+	return res
+}
+
+func ReduceSlice[T any, R any](s []T, res R, f func(R, T) R) R {
+	for _, item := range s {
+		res = f(res, item)
+	}
+	return res
+}
+
+func MapToSlice[K comparable, V any, R any](m map[K]V, f func(K, V) R) []R {
+	res := make([]R, len(m))
+	for k, v := range m {
+		res = append(res, f(k, v))
+	}
+	return res
+}
+
+func MapKeys[K comparable, V any](m map[K]V) []K {
+	res := make([]K, len(m))
+	i := 0
+	for k := range m {
+		res[i] = k
+		i++
+	}
+	return res
+}
+
+func MapValues[K comparable, V any](m map[K]V) []V {
+	res := make([]V, len(m))
+	i := 0
+	for _, v := range m {
+		res[i] = v
+		i++
+	}
+	return res
+}

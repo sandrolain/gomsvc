@@ -92,21 +92,15 @@ func OnExit(fn OnExitFunc) {
 	exitCallbacks = append(exitCallbacks, fn)
 }
 
-func GetEnv[T any]() (config T, err error) {
-	err = env.Parse(&config)
-	if e, ok := err.(*env.AggregateError); ok {
-		for _, er := range e.Errors {
-			err = fmt.Errorf("Env parse error: %v\n", er)
-			return
-		}
+func GetEnv[T any]() (cfg T, err error) {
+	err = env.Parse(&cfg)
+	if err != nil {
+		return
 	}
-	v := validator.New()
-	err = v.Struct(config)
-	if e, ok := err.(validator.ValidationErrors); ok {
-		for _, er := range e {
-			err = fmt.Errorf("Env validation error: %v\n", er)
-			return
-		}
+
+	err = validator.New(validator.WithRequiredStructEnabled()).Struct(cfg)
+	if err != nil {
+		return
 	}
 	return
 }

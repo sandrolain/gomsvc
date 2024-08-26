@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"go.mongodb.org/mongo-driver/bson"
+	"go.mongodb.org/mongo-driver/bson/primitive"
 	"go.mongodb.org/mongo-driver/mongo"
 	"go.mongodb.org/mongo-driver/mongo/options"
 )
@@ -25,13 +26,20 @@ func Connect(uri string, db string) (*Connection, error) {
 	}, err
 }
 
-type RepoIdGeneratorFunc[T any, K any] func() (K, error)
+type RepoIdGeneratorFunc[K any] func() (K, error)
+type RepoToUUIDBytesFunc[K any] func(K) ([16]byte, error)
 
 type Repo[T any, K any] struct {
 	connection *Connection
 	collection mongo.Collection
-	generateId RepoIdGeneratorFunc[T, K]
+	config     RepoConfig[K]
 	timeout    int
+}
+
+type RepoConfig[K any] struct {
+	Collection    string
+	GenerateID    RepoIdGeneratorFunc[K]
+	IDToUUIDBytes RepoToUUIDBytesFunc[K]
 }
 
 func (r *Repo[T, K]) getContext() (context.Context, context.CancelFunc) {
@@ -45,22 +53,22 @@ func (r *Repo[T, K]) New(ids ...K) (data T, err error) {
 	var id K
 	if len(ids) > 0 {
 		id = ids[0]
-	} else if r.generateId != nil {
-		id, err = r.generateId()
-	}
-	if err == nil {
 		_, err = setIdValue[T, K](&data, &id)
+	} else {
+		err = r.ApplyId(&data)
 	}
 	return
 }
 
 func (r *Repo[T, K]) ApplyId(data *T) (err error) {
 	var id K
-	if r.generateId != nil {
-		id, err = r.generateId()
-	}
-	if err == nil {
-		_, err = setIdValue[T, K](data, &id)
+	if r.config.GenerateID != nil {
+		id, err = r.config.GenerateID()
+		if err == nil {
+			_, err = setIdValue[T, K](data, &id)
+		}
+	} else {
+		err = fmt.Errorf(`ID generator function not defined for "%v"`, r.collection.Name())
 	}
 	return
 }
@@ -152,17 +160,45 @@ func (r *Repo[T, K]) DeleteById(id K) (count int64, err error) {
 	return
 }
 
-func (r *Repo[T, K]) SetIdGenerator(applyId RepoIdGeneratorFunc[T, K]) {
-	r.generateId = applyId
+func (r *Repo[T, K]) IdToUUIDBytes(id K) (res [16]byte, err error) {
+	if r.config.IDToUUIDBytes != nil {
+		res, err = r.config.IDToUUIDBytes(id)
+		return
+	}
+	err = fmt.Errorf(`id to bytes conversion function not defined for "%s"`, r.collection.Name())
+	return
 }
 
 func (r *Repo[T, K]) SetTimeout(timeout int) {
 	r.timeout = timeout
 }
 
-func NewRepo[T any, K any](connection *Connection, collection string) *Repo[T, K] {
+func NewRepo[T any, K any](connection *Connection, config RepoConfig[K]) *Repo[T, K] {
+	return &Repo[T, K]{
+		connection: connection,
+		collection: *connection.db.Collection(config.Collection),
+		config:     config,
+	}
+}
+
+func NewRepoWithObjectID[T any, K any](connection *Connection, collection string) *Repo[T, K] {
 	return &Repo[T, K]{
 		connection: connection,
 		collection: *connection.db.Collection(collection),
+		config: RepoConfig[K]{
+			Collection: collection,
+		},
 	}
+}
+
+func GenerateObjectID() (primitive.ObjectID, error) {
+	return primitive.NewObjectID(), nil
+}
+
+func ObjectIDToUUIDBytes(oi primitive.ObjectID) (res [16]byte, err error) {
+	l := len(oi)
+	for i := 0; i < l && i < 16; i++ {
+		res[i] = oi[i]
+	}
+	return
 }

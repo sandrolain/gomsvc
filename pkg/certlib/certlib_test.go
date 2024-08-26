@@ -4,49 +4,137 @@ import (
 	"crypto/x509/pkix"
 	"os"
 	"testing"
+	"time"
 )
 
 func TestGenerateCA(t *testing.T) {
-	caCert, err := GenerateCA(CAArgs{
+	rootCA, err := GenerateCertificate(CertificateTypeRootCA, CertificateArgs{
 		Subject: pkix.Name{
 			CommonName:    "Test",
 			Organization:  []string{"Test"},
 			Country:       []string{"IT"},
 			Province:      []string{"Rome"},
 			Locality:      []string{"Rome"},
-			StreetAddress: []string{""},
-			PostalCode:    []string{""},
+			StreetAddress: []string{"test"},
+			PostalCode:    []string{"12345"},
 		},
+		Duration: 365 * 24 * time.Hour,
 	})
 	if err != nil {
-		t.Fatalf(err.Error())
+		t.Fatal(err.Error())
 	}
 
-	cert, err := GenerateCertificate(CertificateArgs{
+	t.Run("Root CA to File", func(t *testing.T) {
+		certBytes, err := EncodeCertificateToPEM(rootCA.Cert)
+		if err != nil {
+			t.Fatal(err.Error())
+		}
+
+		keyBytes, err := EncodePrivateKeyToPEM(rootCA.Key)
+		if err != nil {
+			t.Fatal(err.Error())
+		}
+
+		os.WriteFile("./root_ca_cert.pem", certBytes, 0644)
+		os.WriteFile("./root_ca_key.pem", keyBytes, 0644)
+	})
+
+	ca, err := GenerateCertificate(CertificateTypeIntermediateCA, CertificateArgs{
 		Subject: pkix.Name{
 			CommonName:    "Test",
 			Organization:  []string{"Test"},
 			Country:       []string{"IT"},
 			Province:      []string{"Rome"},
 			Locality:      []string{"Rome"},
-			StreetAddress: []string{""},
-			PostalCode:    []string{""},
+			StreetAddress: []string{"test"},
+			PostalCode:    []string{"12345"},
 		},
-		CACert: caCert.TlsCert,
-		CA:     caCert.Cert,
+		Issuer:   rootCA,
+		Duration: 365 * 24 * time.Hour,
 	})
 
 	if err != nil {
-		t.Fatalf(err.Error())
+		t.Fatal(err.Error())
 	}
 
-	certBytes, keyBytes, err := EncodePEM(cert.TlsCert)
+	t.Run("Intermediate CA to File", func(t *testing.T) {
+		certBytes, err := EncodeCertificateToPEM(ca.Cert)
+		if err != nil {
+			t.Fatal(err.Error())
+		}
+
+		keyBytes, err := EncodePrivateKeyToPEM(ca.Key)
+		if err != nil {
+			t.Fatal(err.Error())
+		}
+
+		os.WriteFile("./int_ca_cert.pem", certBytes, 0644)
+		os.WriteFile("./int_ca_key.pem", keyBytes, 0644)
+	})
+
+	client, err := GenerateCertificate(CertificateTypeClient, CertificateArgs{
+		Subject: pkix.Name{
+			CommonName:    "Test",
+			Organization:  []string{"Test"},
+			Country:       []string{"IT"},
+			Province:      []string{"Rome"},
+			Locality:      []string{"Rome"},
+			StreetAddress: []string{"test"},
+			PostalCode:    []string{"12345"},
+		},
+		Issuer:   ca,
+		Duration: 365 * 24 * time.Hour,
+	})
 
 	if err != nil {
-		t.Fatalf(err.Error())
+		t.Fatal(err.Error())
 	}
 
-	os.WriteFile("./cert.pem", certBytes, 0644)
-	os.WriteFile("./key.pem", keyBytes, 0644)
+	t.Run("Client to File", func(t *testing.T) {
+		certBytes, err := EncodeCertificateToPEM(client.Cert)
+		if err != nil {
+			t.Fatal(err.Error())
+		}
 
+		keyBytes, err := EncodePrivateKeyToPEM(client.Key)
+		if err != nil {
+			t.Fatal(err.Error())
+		}
+
+		os.WriteFile("./client_cert.pem", certBytes, 0644)
+		os.WriteFile("./client_key.pem", keyBytes, 0644)
+	})
+
+	server, err := GenerateCertificate(CertificateTypeServer, CertificateArgs{
+		Subject: pkix.Name{
+			CommonName:    "Test",
+			Organization:  []string{"Test"},
+			Country:       []string{"IT"},
+			Province:      []string{"Rome"},
+			Locality:      []string{"Rome"},
+			StreetAddress: []string{"test"},
+			PostalCode:    []string{"12345"},
+		},
+		Issuer:   ca,
+		Duration: 365 * 24 * time.Hour,
+	})
+
+	if err != nil {
+		t.Fatal(err.Error())
+	}
+
+	t.Run("Server to File", func(t *testing.T) {
+		certBytes, err := EncodeCertificateToPEM(server.Cert)
+		if err != nil {
+			t.Fatal(err.Error())
+		}
+
+		keyBytes, err := EncodePrivateKeyToPEM(server.Key)
+		if err != nil {
+			t.Fatal(err.Error())
+		}
+
+		os.WriteFile("./server_cert.pem", certBytes, 0644)
+		os.WriteFile("./server_key.pem", keyBytes, 0644)
+	})
 }

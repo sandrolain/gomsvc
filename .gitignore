@@ -2,5 +2,5 @@
 vendor/
 .DS_Store
 test/data
-pkg/certlib/cert.pem
-pkg/certlib/key.pem
+pkg/certlib/*.pem
+trash/

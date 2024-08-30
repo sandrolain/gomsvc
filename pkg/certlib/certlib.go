@@ -9,6 +9,7 @@ import (
 	"errors"
 	"fmt"
 	"math/big"
+	"net"
 	"time"
 )
 
@@ -39,11 +40,13 @@ const (
 type CertificateArgs struct {
 	Serial         *big.Int
 	Subject        pkix.Name
+	Extensions     []pkix.Extension
 	Issuer         CertKey
 	NotBefore      time.Time
 	Duration       time.Duration
 	EmailAddresses []string
 	DNSNames       []string
+	IPAddresses    []net.IP
 	KeySize        int
 }
 
@@ -88,6 +91,8 @@ func GenerateCertificate(certType CertificateType, args CertificateArgs) (res Ce
 		Subject:               args.Subject, // TODO: validation
 		EmailAddresses:        args.EmailAddresses,
 		DNSNames:              args.DNSNames,
+		IPAddresses:           args.IPAddresses,
+		ExtraExtensions:       args.Extensions,
 		NotBefore:             notBefore,
 		NotAfter:              notAfter,
 		KeyUsage:              keyUsage,

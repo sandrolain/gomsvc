@@ -28,6 +28,10 @@ func (c *CertKey) TLSCertificate() *tls.Certificate {
 	}
 }
 
+func (c *CertKey) PublicKey() *rsa.PublicKey {
+	return &c.Key.PublicKey
+}
+
 type CertificateType int
 
 const (

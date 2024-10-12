@@ -1,7 +1,8 @@
-package body
+package datalib
 
 import (
 	"encoding/json"
+	"fmt"
 	"strings"
 
 	"github.com/vmihailenco/msgpack/v5"
@@ -11,14 +12,8 @@ const (
 	TypeJson     = "application/json"
 	TypeMsgpack  = "application/msgpack"
 	TypeXMsgpack = "application/x-msgpack"
-	TypeProtobuf = "appliction/protobuf"
+	TypeProtobuf = "application/protobuf"
 )
-
-func dataAsType[T any, R any](data T) (R, bool) {
-	var i interface{} = data
-	d, ok := i.(R)
-	return d, ok
-}
 
 func MarshalBody[T any](typ string, data *T) (reqBytes []byte, err error) {
 	switch typ {
@@ -26,6 +21,8 @@ func MarshalBody[T any](typ string, data *T) (reqBytes []byte, err error) {
 		reqBytes, err = json.Marshal(*data)
 	case TypeMsgpack, TypeXMsgpack:
 		reqBytes, err = msgpack.Marshal(*data)
+	default:
+		err = fmt.Errorf("unknown type: %s", typ)
 	}
 	return
 }
@@ -37,6 +34,8 @@ func UnmarshalBody[R any](typ string, resBody []byte) (data R, err error) {
 		err = json.Unmarshal(resBody, &data)
 	case TypeMsgpack, TypeXMsgpack:
 		err = msgpack.Unmarshal(resBody, &data)
+	default:
+		err = fmt.Errorf("unknown type: %s", typ)
 	}
 	return
 }

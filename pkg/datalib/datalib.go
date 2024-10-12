@@ -1,6 +1,7 @@
 package datalib
 
 import (
+	"fmt"
 	"reflect"
 
 	mapset "github.com/deckarep/golang-set/v2"
@@ -92,4 +93,16 @@ func MapValues[K comparable, V any](m map[K]V) []V {
 		i++
 	}
 	return res
+}
+
+func ConvertType[T interface{}](all []interface{}) ([]T, error) {
+	res := make([]T, len(all))
+	for i, v := range all {
+		val, ok := v.(T)
+		if !ok {
+			return res, fmt.Errorf("item %v not convertible", i)
+		}
+		res[i] = val
+	}
+	return res, nil
 }

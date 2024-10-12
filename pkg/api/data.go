@@ -8,7 +8,7 @@ import (
 	"strings"
 
 	"github.com/gofiber/fiber/v2"
-	"github.com/sandrolain/gomsvc/pkg/body"
+	"github.com/sandrolain/gomsvc/pkg/datalib"
 	"github.com/vmihailenco/msgpack/v5"
 	"google.golang.org/protobuf/proto"
 )
@@ -76,9 +76,9 @@ func extractBody(ft *reflect.StructField, fv *reflect.Value, ctx *fiber.Ctx) (er
 		err = nil
 		resType := strings.Split(ctx.Get("Content-Type"), ";")
 		switch resType[0] {
-		case body.TypeMsgpack, body.TypeXMsgpack:
+		case datalib.TypeMsgpack, datalib.TypeXMsgpack:
 			err = msgpack.Unmarshal(ctx.Body(), ptr)
-		case body.TypeProtobuf:
+		case datalib.TypeProtobuf:
 			d, ok := ptr.(proto.Message)
 			if ok {
 				err = proto.Unmarshal(ctx.Body(), d)

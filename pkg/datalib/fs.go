@@ -17,7 +17,7 @@ func SafeDirName(parts ...string) (fn string, err error) {
 	return
 }
 
-func SafeFilename(filename string, ext ...string) (fn string, err error) {
+func SafeFileName(filename string, ext ...string) (fn string, err error) {
 	fn, err = filenamify.Filenamify(filename, filenamify.Options{
 		Replacement: "_",
 	})

@@ -32,7 +32,7 @@ func (c *Connection) DefineCollections(defs []CollectionDef) error {
 	defer cancel()
 	names, err := c.DB.ListCollectionNames(ctx, bson.D{})
 	if err != nil {
-		return fmt.Errorf("cannot obtain collection list: %w", &err)
+		return fmt.Errorf("cannot obtain collection list: %w", err)
 	}
 
 	for _, def := range defs {

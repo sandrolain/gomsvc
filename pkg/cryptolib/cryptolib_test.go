@@ -17,7 +17,7 @@ func TestEncryptAES(t *testing.T) {
 		}
 
 		plainText := []byte("Test plaintext")
-		cipherText, err := EncryptAES(plainText, key)
+		cipherText, err := EncryptAESGCM(plainText, key)
 		if err != nil {
 			t.Fatalf("EncryptAES failed for key length %d: %v", keyLength, err)
 		}
@@ -38,12 +38,12 @@ func TestDecryptAES(t *testing.T) {
 		}
 
 		plainText := []byte("Test plaintext")
-		cipherText, err := EncryptAES(plainText, key)
+		cipherText, err := EncryptAESGCM(plainText, key)
 		if err != nil {
 			t.Fatalf("EncryptAES failed for key length %d: %v", keyLength, err)
 		}
 
-		decryptedText, err := DecryptAES(cipherText, key)
+		decryptedText, err := DecryptAESGCM(cipherText, key)
 		if err != nil {
 			t.Fatalf("DecryptAES failed for key length %d: %v", keyLength, err)
 		}

@@ -19,15 +19,9 @@ import (
 
 type EnvServerConfig struct {
 	Port int    `env:"GRPC_PORT" validate:"required,numeric"`
-	Cert string `env:"GRPC_CERT" validate:"required,filepath"`
-	Key  string `env:"GRPC_KEY" validate:"required,filepath"`
-	CA   string `env:"GRPC_CA" validate:"required,filepath"`
-}
-
-type EnvClientConfig struct {
-	Cert string `env:"GRPC_CERT" validate:"required,file"`
-	Key  string `env:"GRPC_KEY" validate:"required,file"`
-	CA   string `env:"GRPC_CA" validate:"required,file"`
+	Cert string `env:"GRPC_CERT" validate:"file"`
+	Key  string `env:"GRPC_KEY" validate:"file"`
+	CA   string `env:"GRPC_CA" validate:"file"`
 }
 
 type Credentials struct {
@@ -42,6 +36,29 @@ type ServerOptions struct {
 	Handler     interface{}       `validate:"required"`
 	Logger      *slog.Logger
 	Credentials *Credentials
+}
+
+func ServerOptionsFromEnvConfig(cfg EnvServerConfig) ServerOptions {
+	var creds *Credentials
+	if cfg.Cert != "" {
+		creds = &Credentials{
+			CertPath: cfg.Cert,
+			KeyPath:  cfg.Key,
+			CAPath:   cfg.CA,
+		}
+	}
+	return ServerOptions{
+		Port:        cfg.Port,
+		Credentials: creds,
+	}
+}
+
+func ClientOptionsFromEnvConfig(cfg EnvClientConfig) ClientOptions {
+	return ClientOptions{
+		CertPath: cfg.Cert,
+		KeyPath:  cfg.Key,
+		CAPath:   cfg.CA,
+	}
 }
 
 func interceptorLogger(l *slog.Logger) logging.Logger {

@@ -13,3 +13,12 @@ func GetFreePort() (port int, err error) {
 	}
 	return
 }
+
+func NetworkContainsIP(network string, ip string) (bool, error) {
+	_, ipv4Net, err := net.ParseCIDR(network)
+	if err != nil {
+		return false, err
+	}
+	ipo := net.ParseIP(ip)
+	return ipv4Net.Contains(ipo), nil
+}

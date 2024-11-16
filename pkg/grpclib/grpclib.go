@@ -7,8 +7,10 @@ import (
 
 	"log/slog"
 
+	"github.com/bufbuild/protovalidate-go"
 	"github.com/go-playground/validator/v10"
 	"github.com/grpc-ecosystem/go-grpc-middleware/v2/interceptors/logging"
+	protovalidate_middleware "github.com/grpc-ecosystem/go-grpc-middleware/v2/interceptors/protovalidate"
 	"github.com/sandrolain/gomsvc/pkg/certlib"
 	"github.com/sandrolain/gomsvc/pkg/svc"
 	"google.golang.org/grpc"
@@ -39,7 +41,7 @@ type ServerOptions struct {
 	Desc        *grpc.ServiceDesc `validate:"required"`
 	Handler     interface{}       `validate:"required"`
 	Logger      *slog.Logger
-	Credentials Credentials `validate:"required"`
+	Credentials *Credentials
 }
 
 func interceptorLogger(l *slog.Logger) logging.Logger {
@@ -48,44 +50,76 @@ func interceptorLogger(l *slog.Logger) logging.Logger {
 	})
 }
 
-func CreateServer(opts ServerOptions) error {
+type GrpcServer struct {
+	server *grpc.Server
+	lis    net.Listener
+	logger *slog.Logger
+}
+
+func NewGrpcServer(opts ServerOptions) (*GrpcServer, error) {
 	lis, err := net.Listen("tcp", fmt.Sprintf(":%v", opts.Port))
 	if err != nil {
-		return err
+		return nil, err
 	}
 	logger := opts.Logger
 	if logger == nil {
 		logger = svc.Logger()
 	}
+
+	err = validator.New().Struct(opts)
+	if err != nil {
+		return nil, err
+	}
+
+	serverOptions := []grpc.ServerOption{}
+	if opts.Credentials != nil {
+		cred, err := certlib.LoadServerTLSCredentials(certlib.ServerTLSConfigArgs[string]{
+			Cert: opts.Credentials.CertPath,
+			Key:  opts.Credentials.KeyPath,
+			CA:   opts.Credentials.CAPath,
+		})
+		if err != nil {
+			return nil, fmt.Errorf("failed to load credentials: %w", err)
+		}
+		serverOptions = append(serverOptions, grpc.Creds(cred))
+	}
+
+	protovalidator, e := protovalidate.New()
+	if e != nil {
+		return nil, fmt.Errorf("failed to create validator: %w", e)
+	}
+
 	loggerOpts := []logging.Option{
 		logging.WithLogOnEvents(logging.StartCall, logging.FinishCall),
 	}
-	err = validator.New().Struct(opts)
-	if err != nil {
-		return err
-	}
-	cred, err := certlib.LoadServerTLSCredentials(certlib.ServerTLSConfigArgs[string]{
-		Cert: opts.Credentials.CertPath,
-		Key:  opts.Credentials.KeyPath,
-		CA:   opts.Credentials.CAPath,
-	})
-	if err != nil {
-		return err
-	}
-	s := grpc.NewServer(
-		grpc.Creds(cred),
+
+	serverOptions = append(serverOptions,
 		grpc.ChainUnaryInterceptor(
+			protovalidate_middleware.UnaryServerInterceptor(protovalidator),
 			logging.UnaryServerInterceptor(interceptorLogger(logger), loggerOpts...),
 		),
 		grpc.ChainStreamInterceptor(
+			protovalidate_middleware.StreamServerInterceptor(protovalidator),
 			logging.StreamServerInterceptor(interceptorLogger(logger), loggerOpts...),
 		),
 	)
+
+	s := grpc.NewServer(serverOptions...)
 	s.RegisterService(opts.Desc, opts.Handler)
 	reflection.Register(s)
-	svc.Logger().Info("start gRPC server", "addr", lis.Addr())
-	if err := s.Serve(lis); err != nil {
-		return err
+
+	return &GrpcServer{server: s, lis: lis, logger: logger}, nil
+}
+
+func (gs *GrpcServer) Start() error {
+	gs.logger.Info("start gRPC server", "addr", gs.lis.Addr())
+	if err := gs.server.Serve(gs.lis); err != nil {
+		return fmt.Errorf("failed to serve: %w", err)
 	}
 	return nil
+}
+
+func (gs *GrpcServer) Stop() {
+	gs.server.GracefulStop()
+	gs.logger.Info("gRPC server stopped")
 }

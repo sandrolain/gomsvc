@@ -1,0 +1,22 @@
+syntax = "proto3";
+
+package prototest;
+
+import "buf/validate/validate.proto";
+
+option go_package="github.com/sandrolain/gomsvc/pkg/grpclib/test;test";
+
+message UnitTestRequest {
+  string test_name = 1;
+  string test_description = 2;
+}
+
+message UnitTestResponse {
+  bool success = 1;
+  string message = 2;
+}
+
+service UnitTestService {
+  rpc RunTest(UnitTestRequest) returns (UnitTestResponse);
+}
+

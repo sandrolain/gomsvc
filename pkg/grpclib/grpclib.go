@@ -32,7 +32,7 @@ type Credentials struct {
 
 type ServerOptions struct {
 	Port        int               `validate:"required,number"`
-	Desc        *grpc.ServiceDesc `validate:"required"`
+	ServiceDesc *grpc.ServiceDesc `validate:"required"`
 	Handler     interface{}       `validate:"required"`
 	Logger      *slog.Logger
 	Credentials *Credentials
@@ -50,14 +50,6 @@ func ServerOptionsFromEnvConfig(cfg EnvServerConfig) ServerOptions {
 	return ServerOptions{
 		Port:        cfg.Port,
 		Credentials: creds,
-	}
-}
-
-func ClientOptionsFromEnvConfig(cfg EnvClientConfig) ClientOptions {
-	return ClientOptions{
-		CertPath: cfg.Cert,
-		KeyPath:  cfg.Key,
-		CAPath:   cfg.CA,
 	}
 }
 
@@ -122,7 +114,7 @@ func NewGrpcServer(opts ServerOptions) (*GrpcServer, error) {
 	)
 
 	s := grpc.NewServer(serverOptions...)
-	s.RegisterService(opts.Desc, opts.Handler)
+	s.RegisterService(opts.ServiceDesc, opts.Handler)
 	reflection.Register(s)
 
 	return &GrpcServer{server: s, lis: lis, logger: logger}, nil

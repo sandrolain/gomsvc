@@ -25,10 +25,10 @@ func (s *testServer) RunTest(ctx context.Context, in *g.UnitTestRequest) (*g.Uni
 
 func TestNewGrpcServer(t *testing.T) {
 	opts := ServerOptions{
-		Port:    8080,
-		Desc:    &g.UnitTestService_ServiceDesc,
-		Handler: &testServer{},
-		Logger:  slog.New(slog.NewTextHandler(os.Stdout, &slog.HandlerOptions{AddSource: true})),
+		Port:        8080,
+		ServiceDesc: &g.UnitTestService_ServiceDesc,
+		Handler:     &testServer{},
+		Logger:      slog.New(slog.NewTextHandler(os.Stdout, &slog.HandlerOptions{AddSource: true})),
 	}
 
 	_, err := NewGrpcServer(opts)
@@ -39,9 +39,9 @@ func TestNewGrpcServer(t *testing.T) {
 
 func TestNewGrpcServer_FailToLoadCredentials(t *testing.T) {
 	opts := ServerOptions{
-		Port:    8080,
-		Desc:    &g.UnitTestService_ServiceDesc,
-		Handler: &testServer{},
+		Port:        8080,
+		ServiceDesc: &g.UnitTestService_ServiceDesc,
+		Handler:     &testServer{},
 		Credentials: &Credentials{
 			CertPath: "non-existent-cert",
 			KeyPath:  "non-existent-key",
@@ -63,10 +63,10 @@ func TestGrpcServer_Start(t *testing.T) {
 	}
 
 	opts := ServerOptions{
-		Port:    port,
-		Desc:    &g.UnitTestService_ServiceDesc,
-		Handler: &testServer{},
-		Logger:  slog.New(slog.NewTextHandler(os.Stdout, &slog.HandlerOptions{AddSource: true})),
+		Port:        port,
+		ServiceDesc: &g.UnitTestService_ServiceDesc,
+		Handler:     &testServer{},
+		Logger:      slog.New(slog.NewTextHandler(os.Stdout, &slog.HandlerOptions{AddSource: true})),
 	}
 
 	srv, err := NewGrpcServer(opts)

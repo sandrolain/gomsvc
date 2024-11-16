@@ -8,7 +8,7 @@ import (
 
 	"github.com/go-playground/validator/v10"
 	"github.com/gofiber/fiber/v2"
-	"github.com/sandrolain/gomsvc/pkg/api/slogfiber"
+	slogfiber "github.com/samber/slog-fiber"
 	"github.com/sandrolain/gomsvc/pkg/svc"
 )
 

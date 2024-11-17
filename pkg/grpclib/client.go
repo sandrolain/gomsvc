@@ -11,7 +11,7 @@ import (
 )
 
 type ClientOptions struct {
-	Url         string
+	Url         string `validate:"required,url"`
 	Logger      *slog.Logger
 	Credentials *Credentials
 }

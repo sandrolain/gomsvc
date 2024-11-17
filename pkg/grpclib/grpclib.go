@@ -19,15 +19,15 @@ import (
 
 type EnvServerConfig struct {
 	Port int    `env:"GRPC_PORT" validate:"required,numeric"`
-	Cert string `env:"GRPC_CERT" validate:"file"`
-	Key  string `env:"GRPC_KEY" validate:"file"`
-	CA   string `env:"GRPC_CA" validate:"file"`
+	Cert string `env:"GRPC_CERT" validate:"filepath"`
+	Key  string `env:"GRPC_KEY" validate:"filepath"`
+	CA   string `env:"GRPC_CA" validate:"filepath"`
 }
 
 type Credentials struct {
-	CertPath string `validate:"required,file"`
-	KeyPath  string `validate:"required,file"`
-	CAPath   string `validate:"required,file"`
+	CertPath string `validate:"required,filepath"`
+	KeyPath  string `validate:"required,filepath"`
+	CAPath   string `validate:"required,filepath"`
 }
 
 type ServerOptions struct {

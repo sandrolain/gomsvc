@@ -19,9 +19,9 @@ import (
 
 type EnvServerConfig struct {
 	Port int    `env:"GRPC_PORT" validate:"required,numeric"`
-	Cert string `env:"GRPC_CERT" validate:"filepath"`
-	Key  string `env:"GRPC_KEY" validate:"filepath"`
-	CA   string `env:"GRPC_CA" validate:"filepath"`
+	Cert string `env:"GRPC_CERT" validate:"omitempty,filepath"`
+	Key  string `env:"GRPC_KEY" validate:"omitempty,filepath"`
+	CA   string `env:"GRPC_CA" validate:"omitempty,filepath"`
 }
 
 type Credentials struct {
@@ -35,7 +35,7 @@ type ServerOptions struct {
 	ServiceDesc *grpc.ServiceDesc `validate:"required"`
 	Handler     interface{}       `validate:"required"`
 	Logger      *slog.Logger
-	Credentials *Credentials
+	Credentials *Credentials `validate:"omitempty"`
 }
 
 func ServerOptionsFromEnvConfig(cfg EnvServerConfig) ServerOptions {

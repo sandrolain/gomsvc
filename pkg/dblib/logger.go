@@ -1,4 +1,4 @@
-package pglib
+package dblib
 
 import (
 	"context"

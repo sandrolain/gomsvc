@@ -46,13 +46,12 @@ func Service[C any](opts ServiceOptions, fn ServiceFunc[C]) {
 
 	config := PanicWithError(GetEnv[C]())
 
-	exitCh := make(chan os.Signal)
+	exitCh := make(chan os.Signal, 1)
 	signal.Notify(exitCh,
 		syscall.SIGTERM, // terminate: stopped by `kill -9 PID`
 		syscall.SIGINT,  // interrupt: stopped by Ctrl + C
 		syscall.SIGHUP,
 		syscall.SIGQUIT,
-		os.Kill,
 		os.Interrupt,
 	)
 

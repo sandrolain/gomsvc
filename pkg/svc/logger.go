@@ -31,6 +31,9 @@ func initLogger(env DefaultEnv) {
 }
 
 func Logger() *slog.Logger {
+	if logger == nil {
+		initLogger(PanicWithError(GetEnv[DefaultEnv]()))
+	}
 	return logger
 }
 

@@ -41,8 +41,9 @@ func NotFound(msg string, args ...interface{}) error {
 	return e
 }
 
-func InternalError(msg string, args ...interface{}) error {
+func InternalError(msg string, err error, args ...interface{}) error {
 	m, args, e := getArgs(codes.Internal, "Internal Error", msg, args)
+	args = append(args, "err", err)
 	log(context.Background(), slog.LevelError, m, args...)
 	return e
 }

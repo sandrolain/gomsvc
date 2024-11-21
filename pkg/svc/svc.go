@@ -14,9 +14,16 @@ import (
 	typeid "go.jetpack.io/typeid"
 )
 
-var serviceUuid string
+var (
+	serviceUuid string
+	serviceUuidOnce sync.Once
+	serviceUuidMu sync.RWMutex
+)
 
-var exitCallbacks = make([]OnExitFunc, 0)
+var (
+	exitCallbacksMu sync.RWMutex
+	exitCallbacks   = make([]OnExitFunc, 0)
+)
 
 type DefaultEnv struct {
 	LogLevel  string `env:"LOG_LEVEL"`
@@ -30,17 +37,32 @@ type ServiceOptions struct {
 }
 type ServiceFunc[T any] func(T)
 
-var options *ServiceOptions
+var (
+	optionsMu sync.RWMutex
+	options   *ServiceOptions
+)
 
-var globalConfig interface{}
+var (
+	globalConfigMu sync.RWMutex
+	globalConfig   interface{}
+)
 
 var osExit = os.Exit // allow to be mocked in tests
 
 func Service[C any](opts ServiceOptions, fn ServiceFunc[C]) {
 	v := validator.New()
 	PanicIfError(v.Struct(opts))
-	serviceUuid = PanicWithError(typeid.From(cleanTypeIdName(opts.Name), "")).String()
+	
+	serviceUuidOnce.Do(func() {
+		uuid := PanicWithError(typeid.From(cleanTypeIdName(opts.Name), "")).String()
+		serviceUuidMu.Lock()
+		serviceUuid = uuid
+		serviceUuidMu.Unlock()
+	})
+
+	optionsMu.Lock()
 	options = &opts
+	optionsMu.Unlock()
 
 	env := PanicWithError(GetEnv[DefaultEnv]())
 
@@ -57,9 +79,19 @@ func Service[C any](opts ServiceOptions, fn ServiceFunc[C]) {
 		os.Interrupt,
 	)
 
-	slog.Info(`Starting service`, "name", options.Name, "version", opts.Version, "ID", serviceUuid)
+	serviceUuidMu.RLock()
+	svcUuid := serviceUuid
+	serviceUuidMu.RUnlock()
 
+	optionsMu.RLock()
+	svcOpts := options
+	optionsMu.RUnlock()
+
+	slog.Info(`Starting service`, "name", svcOpts.Name, "version", opts.Version, "ID", svcUuid)
+
+	globalConfigMu.Lock()
 	globalConfig = config
+	globalConfigMu.Unlock()
 
 	go fn(config)
 	<-exitCh
@@ -68,12 +100,18 @@ func Service[C any](opts ServiceOptions, fn ServiceFunc[C]) {
 
 func Exit(code int) {
 	var wg sync.WaitGroup
-	for _, fn := range exitCallbacks {
+	
+	exitCallbacksMu.RLock()
+	callbacks := make([]OnExitFunc, len(exitCallbacks))
+	copy(callbacks, exitCallbacks)
+	exitCallbacksMu.RUnlock()
+	
+	for _, fn := range callbacks {
 		wg.Add(1)
-		go func() {
-			fn()
-			wg.Done()
-		}()
+		go func(callback OnExitFunc) {
+			defer wg.Done()
+			callback()
+		}(fn)
 	}
 	wg.Wait()
 	logger.Info("Exit service", "code", code)
@@ -83,22 +121,32 @@ func Exit(code int) {
 type OnExitFunc func()
 
 func OnExit(fn OnExitFunc) {
+	exitCallbacksMu.Lock()
 	exitCallbacks = append(exitCallbacks, fn)
+	exitCallbacksMu.Unlock()
 }
 
 func Config[T any]() T {
+	globalConfigMu.RLock()
+	defer globalConfigMu.RUnlock()
 	return globalConfig.(T)
 }
 
 func ServiceID() string {
+	serviceUuidMu.RLock()
+	defer serviceUuidMu.RUnlock()
 	return serviceUuid
 }
 
 func ServiceName() string {
+	optionsMu.RLock()
+	defer optionsMu.RUnlock()
 	return options.Name
 }
 
 func ServiceVersion() string {
+	optionsMu.RLock()
+	defer optionsMu.RUnlock()
 	return options.Version
 }
 

@@ -2,6 +2,7 @@ package svc
 
 import (
 	"os"
+	"sync/atomic"
 	"testing"
 	"time"
 
@@ -49,22 +50,22 @@ func TestOnExit(t *testing.T) {
 	originalOsExit := osExit
 	defer func() { osExit = originalOsExit }()
 	
-	exitCalled := false
+	var exitCalled atomic.Bool
 	osExit = func(code int) {
-		exitCalled = true
+		exitCalled.Store(true)
 		assert.Equal(t, 0, code)
 	}
 	
-	callCount := 0
+	var callCount atomic.Int32
 	OnExit(func() {
-		callCount++
+		callCount.Add(1)
 	})
 	
 	OnExit(func() {
-		callCount++
+		callCount.Add(1)
 	})
 	
 	Exit(0)
-	assert.True(t, exitCalled)
-	assert.Equal(t, 2, callCount)
+	assert.True(t, exitCalled.Load())
+	assert.Equal(t, int32(2), callCount.Load())
 }

@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # Run tests with coverage and output to a file
-go test $(go list ./... | grep -v "example" | grep -v "pkg/grpclib/test") -coverprofile=coverage.out
+go test $(go list ./... | grep -v "example" | grep -v "pkg/grpclib/test") -v -race -coverprofile=coverage.out
 
 # Display coverage in the terminal
 go tool cover -func=coverage.out

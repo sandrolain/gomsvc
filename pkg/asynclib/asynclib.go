@@ -1,6 +1,7 @@
 package asynclib
 
 import (
+	"sync"
 	"time"
 )
 
@@ -39,8 +40,13 @@ func SetInterval(fn func(), millis int64) Interval {
 	ticker := time.NewTicker(time.Duration(millis * int64(time.Millisecond)))
 	go func() {
 		for {
-			<-ticker.C
-			fn()
+			select {
+			case <-ticker.C:
+				fn()
+			case <-stopped:
+				ticker.Stop()
+				return
+			}
 		}
 	}()
 	return Interval{Ticker: ticker, Stopped: stopped, s: stopped}
@@ -59,29 +65,51 @@ type WorketResult[T any, R any] struct {
 }
 
 type Workers[T any, R any] struct {
-	Input   chan<- T
-	Results <-chan WorketResult[T, R]
+	Input    chan T
+	Results  chan WorketResult[T, R]
+	done     chan struct{}
+	stopOnce sync.Once
 }
 
 func StartWorkers[T any, R any](workersNum int, fn func(T) (R, error)) (res Workers[T, R]) {
 	inputs := make(chan T, workersNum)
 	results := make(chan WorketResult[T, R], workersNum)
+	done := make(chan struct{})
+
+	workers := Workers[T, R]{
+		Input:   inputs,
+		Results: results,
+		done:    done,
+	}
+
 	for n := 1; n <= workersNum; n++ {
 		go func(n int) {
-			for val := range inputs {
-				res, err := fn(val)
-				results <- WorketResult[T, R]{
-					WorkerNum: n,
-					Input:     val,
-					Result:    res,
-					Err:       err,
+			for {
+				select {
+				case val, ok := <-inputs:
+					if !ok {
+						return
+					}
+					res, err := fn(val)
+					results <- WorketResult[T, R]{
+						WorkerNum: n,
+						Input:     val,
+						Result:    res,
+						Err:       err,
+					}
+				case <-done:
+					return
 				}
 			}
 		}(n)
 	}
-	return Workers[T, R]{Input: inputs, Results: results}
+	return workers
 }
 
-func (j Workers[T, R]) Stop() {
-	close(j.Input)
+func (j *Workers[T, R]) Stop() {
+	j.stopOnce.Do(func() {
+		close(j.done)
+		close(j.Input)
+		close(j.Results)
+	})
 }

@@ -2,6 +2,7 @@ package asynclib
 
 import (
 	"fmt"
+	"sync/atomic"
 	"testing"
 	"time"
 
@@ -9,9 +10,9 @@ import (
 )
 
 func TestSetTimeout(t *testing.T) {
-	callbackExecuted := false
+	var callbackExecuted atomic.Bool
 	callback := func() {
-		callbackExecuted = true
+		callbackExecuted.Store(true)
 	}
 
 	timeout := SetTimeout(callback, 100) // 100 milliseconds
@@ -20,13 +21,13 @@ func TestSetTimeout(t *testing.T) {
 
 	timeout.Cancel()
 
-	require.True(t, callbackExecuted, "The callback should have been executed")
+	require.True(t, callbackExecuted.Load(), "The callback should have been executed")
 }
 
 func TestSetTimeoutCancel(t *testing.T) {
-	callbackExecuted := false
+	var callbackExecuted atomic.Bool
 	callback := func() {
-		callbackExecuted = true
+		callbackExecuted.Store(true)
 	}
 
 	timeout := SetTimeout(callback, 200) // 200 milliseconds
@@ -35,13 +36,13 @@ func TestSetTimeoutCancel(t *testing.T) {
 
 	time.Sleep(250 * time.Millisecond)
 
-	require.False(t, callbackExecuted, "The callback should not have been executed after cancel")
+	require.False(t, callbackExecuted.Load(), "The callback should not have been executed after cancel")
 }
 
 func TestSetInterval(t *testing.T) {
-	callbackExecuted := 0
+	var callbackExecuted atomic.Int32
 	callback := func() {
-		callbackExecuted++
+		callbackExecuted.Add(1)
 	}
 
 	interval := SetInterval(callback, 100) // 100 milliseconds
@@ -50,26 +51,26 @@ func TestSetInterval(t *testing.T) {
 
 	interval.Stop()
 
-	require.Equal(t, 3, callbackExecuted, "The callback should have been executed 3 times")
+	require.Equal(t, int32(3), callbackExecuted.Load(), "The callback should have been executed 3 times")
 }
 
 func TestSetIntervalStop(t *testing.T) {
-	callbackExecuted := 0
+	var callbackExecuted atomic.Int32
 	callback := func() {
-		callbackExecuted++
+		callbackExecuted.Add(1)
 	}
 
 	interval := SetInterval(callback, 100) // 100 milliseconds
 
 	time.Sleep(150 * time.Millisecond)
 
-	require.Equal(t, 1, callbackExecuted, "The callback should have been executed only once before stop")
+	require.Equal(t, int32(1), callbackExecuted.Load(), "The callback should have been executed only once before stop")
 
 	interval.Stop() // Stop the interval
 
 	time.Sleep(200 * time.Millisecond)
 
-	require.Equal(t, 1, callbackExecuted, "The callback should have been executed only once after stop")
+	require.Equal(t, int32(1), callbackExecuted.Load(), "The callback should have been executed only once after stop")
 }
 
 func TestStartWorkers(t *testing.T) {

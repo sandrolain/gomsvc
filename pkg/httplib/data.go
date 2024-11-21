@@ -1,4 +1,4 @@
-package api
+package httplib
 
 import (
 	"encoding/json"

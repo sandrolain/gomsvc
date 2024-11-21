@@ -4,6 +4,7 @@ import (
 	"crypto/x509"
 	"errors"
 	"fmt"
+	"time"
 )
 
 type VerifyCertificateArgs struct {
@@ -20,6 +21,15 @@ func VerifyCertificate(args VerifyCertificateArgs) (err error) {
 		return errors.New("no certificate provided")
 	}
 
+	// Check certificate expiration
+	now := time.Now()
+	if now.Before(cert.NotBefore) {
+		return errors.New("certificate is not yet valid")
+	}
+	if now.After(cert.NotAfter) {
+		return errors.New("certificate has expired")
+	}
+
 	roots := x509.NewCertPool()
 	for _, root := range args.Roots {
 		roots.AddCert(root)
@@ -34,6 +44,7 @@ func VerifyCertificate(args VerifyCertificateArgs) (err error) {
 		DNSName:       args.DNSName,
 		Roots:         roots,
 		Intermediates: intermediates,
+		CurrentTime:   now,
 	}
 
 	switch args.Type {
@@ -41,6 +52,13 @@ func VerifyCertificate(args VerifyCertificateArgs) (err error) {
 		options.KeyUsages = []x509.ExtKeyUsage{x509.ExtKeyUsageServerAuth}
 	case CertificateTypeClient:
 		options.KeyUsages = []x509.ExtKeyUsage{x509.ExtKeyUsageClientAuth}
+	}
+
+	// For client/server certs, require proper chain with intermediates
+	if args.Type == CertificateTypeClient || args.Type == CertificateTypeServer {
+		if len(args.Intermediates) == 0 {
+			return errors.New("client/server certificates must be signed by an intermediate CA")
+		}
 	}
 
 	chains, err := cert.Verify(options)

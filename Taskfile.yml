@@ -1,0 +1,55 @@
+version: '3'
+
+vars:
+  GO_FILES:
+    sh: find . -type f -name '*.go' -not -path "./vendor/*"
+
+tasks:
+  default:
+    cmds:
+      - task: test
+
+  test:
+    desc: Run tests
+    cmds:
+      - bash scripts/test.sh
+
+  gen-grpc:
+    desc: Generate gRPC code
+    cmds:
+      - bash scripts/gen-grpc.sh
+
+  fmt:
+    desc: Format Go code
+    cmds:
+      - gofmt -w {{.GO_FILES}}
+
+  lint:
+    desc: Run linters
+    cmds:
+      - golangci-lint run
+
+  build:
+    desc: Build the project
+    cmds:
+      - go build -v ./...
+
+  clean:
+    desc: Clean build artifacts
+    cmds:
+      - go clean
+      - rm -rf bin/
+      - rm -rf dist/
+
+  check:
+    desc: Run all checks (fmt, lint, test)
+    cmds:
+      - task: fmt
+      - task: lint
+      - task: test
+
+  install-deps:
+    desc: Install project dependencies
+    cmds:
+      - go mod download
+      - go mod tidy

@@ -54,13 +54,80 @@ type CertificateArgs struct {
 	KeySize        int
 }
 
+func validateSubject(subject pkix.Name, certType CertificateType) error {
+	if subject.CommonName == "" {
+		return errors.New("CommonName is required")
+	}
+
+	// For CA certificates, require more strict validation
+	if certType == CertificateTypeRootCA || certType == CertificateTypeIntermediateCA {
+		if len(subject.Organization) == 0 {
+			return errors.New("Organization is required for CA certificates")
+		}
+		if len(subject.Country) == 0 {
+			return errors.New("Country is required for CA certificates")
+		}
+	}
+
+	// Validate country code length if provided
+	for _, country := range subject.Country {
+		if len(country) != 2 {
+			return errors.New("Country code must be exactly 2 characters (ISO 3166-1 alpha-2)")
+		}
+	}
+
+	return nil
+}
+
+func validateServerIdentity(args CertificateArgs) error {
+	if len(args.DNSNames) == 0 && len(args.IPAddresses) == 0 {
+		return errors.New("at least one DNS name or IP address is required for server certificates")
+	}
+
+	// Validate DNS names
+	for _, dns := range args.DNSNames {
+		if dns == "" {
+			return errors.New("empty DNS name is not allowed")
+		}
+		if len(dns) > 255 {
+			return errors.New("DNS name exceeds maximum length of 255 characters")
+		}
+	}
+
+	// Validate IP addresses
+	for _, ip := range args.IPAddresses {
+		if ip == nil {
+			return errors.New("nil IP address is not allowed")
+		}
+		if ip.IsUnspecified() {
+			return errors.New("unspecified IP address is not allowed")
+		}
+	}
+
+	return nil
+}
+
 func GenerateCertificate(certType CertificateType, args CertificateArgs) (res CertKey, err error) {
+	// Validate subject fields
+	if err = validateSubject(args.Subject, certType); err != nil {
+		err = fmt.Errorf("invalid subject: %w", err)
+		return
+	}
+
+	// For server certificates, validate DNS names and IP addresses
+	if certType == CertificateTypeServer {
+		if err = validateServerIdentity(args); err != nil {
+			err = fmt.Errorf("invalid server identity: %w", err)
+			return
+		}
+	}
+
 	serialNumber := args.Serial
 	if serialNumber == nil {
 		serialNumber = big.NewInt(time.Now().UnixMilli())
 	}
 
-	notBefore := time.Time{}
+	notBefore := args.NotBefore
 	if notBefore.IsZero() {
 		notBefore = time.Now()
 	}
@@ -92,7 +159,7 @@ func GenerateCertificate(certType CertificateType, args CertificateArgs) (res Ce
 	// set up our server certificate
 	cert := &x509.Certificate{
 		SerialNumber:          serialNumber,
-		Subject:               args.Subject, // TODO: validation
+		Subject:               args.Subject,
 		EmailAddresses:        args.EmailAddresses,
 		DNSNames:              args.DNSNames,
 		IPAddresses:           args.IPAddresses,

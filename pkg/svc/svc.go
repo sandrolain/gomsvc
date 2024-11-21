@@ -34,6 +34,8 @@ var options *ServiceOptions
 
 var globalConfig interface{}
 
+var osExit = os.Exit // allow to be mocked in tests
+
 func Service[C any](opts ServiceOptions, fn ServiceFunc[C]) {
 	v := validator.New()
 	PanicIfError(v.Struct(opts))
@@ -75,7 +77,7 @@ func Exit(code int) {
 	}
 	wg.Wait()
 	logger.Info("Exit service", "code", code)
-	os.Exit(code)
+	osExit(code)
 }
 
 type OnExitFunc func()

@@ -3,6 +3,6 @@ vendor/
 .DS_Store
 test/data
 pkg/certlib/*.pem
-trash/
+.trash/
 coverage.out
 coverage.html

@@ -116,10 +116,12 @@ func (e *Emitter[T]) handleEvent(data T) {
 
 func (e *Emitter[T]) End() {
 	e.cancel() // Cancel context first
-	close(e.ch) // Then close channel
 
-	// Clear handlers
+	// Clear handlers under lock to prevent new emissions
 	e.mu.Lock()
 	e.fns = nil
 	e.mu.Unlock()
+
+	// Close channel last, after all goroutines have likely finished
+	close(e.ch)
 }

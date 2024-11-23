@@ -1,6 +1,8 @@
 package httplib
 
 import (
+	"fmt"
+
 	"github.com/gofiber/fiber/v2"
 )
 
@@ -59,5 +61,27 @@ func UnprocessableEntityError(err error) RouteError {
 	return RouteError{
 		Status: fiber.StatusUnprocessableEntity,
 		Err:    err,
+	}
+}
+
+type ResponseError struct {
+	Code    string `json:"code"`
+	Message string `json:"message"`
+}
+
+type ResponseErrorEnvelope struct {
+	Error ResponseError `json:"error,omitempty"`
+}
+
+func formatStandardResponseError(err RouteError) ResponseErrorEnvelope {
+	code := err.Code
+	if code == "" {
+		code = fmt.Sprintf("%v", err.Status)
+	}
+	return ResponseErrorEnvelope{
+		Error: ResponseError{
+			Code:    code,
+			Message: err.Error(),
+		},
 	}
 }

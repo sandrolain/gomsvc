@@ -29,6 +29,7 @@ func CreateServerTLSConfig(args ServerTLSConfigArgs[[]byte]) (cred credentials.T
 		Certificates: []tls.Certificate{serverCert},
 		ClientAuth:   tls.RequireAndVerifyClientCert,
 		ClientCAs:    certPool,
+		MinVersion:   tls.VersionTLS12,
 	}
 	cred = credentials.NewTLS(cfg)
 	return
@@ -52,6 +53,7 @@ func LoadServerTLSCredentials(args ServerTLSConfigArgs[string]) (cred credential
 		Certificates: []tls.Certificate{serverCert},
 		ClientAuth:   tls.RequireAndVerifyClientCert,
 		ClientCAs:    certPool,
+		MinVersion:   tls.VersionTLS12,
 	})
 	return
 }

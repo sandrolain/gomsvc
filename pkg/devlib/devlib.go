@@ -1,7 +1,14 @@
 package devlib
 
-import "github.com/k0kubun/pp/v3"
+import (
+	"log/slog"
+
+	"github.com/k0kubun/pp/v3"
+)
 
 func P(v any) {
-	pp.Print(v)
+	_, err := pp.Print(v)
+	if err != nil {
+		slog.Default().Error(err.Error())
+	}
 }

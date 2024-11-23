@@ -11,38 +11,33 @@ import (
 func GzipCompress(data []byte) (res []byte, err error) {
 	var buf bytes.Buffer
 	gz := gzip.NewWriter(&buf)
-	_, e := gz.Write(data)
-	if e != nil {
-		gz.Close()
-		err = fmt.Errorf("failed to write gzip writer: %s", e)
-		return
+
+	if _, err = gz.Write(data); err != nil {
+		return nil, fmt.Errorf("failed to write gzip writer: %s", err)
 	}
-	if e := gz.Close(); e != nil {
-		err = fmt.Errorf("failed to close gzip writer: %s", e)
-		return
+
+	if err = gz.Close(); err != nil {
+		return nil, fmt.Errorf("failed to close gzip writer: %s", err)
 	}
+
 	res = buf.Bytes()
 	return
 }
 
 func GzipDecompress(data []byte) (res []byte, err error) {
+	gz, err := gzip.NewReader(bytes.NewReader(data))
+	if err != nil {
+		return nil, fmt.Errorf("failed to create gzip reader: %s", err)
+	}
+	defer func() {
+		if closeErr := gz.Close(); closeErr != nil && err == nil {
+			err = fmt.Errorf("failed to close gzip reader: %s", closeErr)
+		}
+	}()
+
 	var buf bytes.Buffer
-	gz, e := gzip.NewReader(bytes.NewReader(data))
-	if e != nil {
-		err = fmt.Errorf("failed to create gzip reader: %s", e)
-		return
-	}
-
-	_, e = buf.ReadFrom(gz)
-	if e != nil {
-		gz.Close()
-		err = fmt.Errorf("failed to read gzip reader: %s", e)
-		return
-	}
-
-	if e := gz.Close(); e != nil {
-		err = fmt.Errorf("failed to close gzip reader: %s", e)
-		return
+	if _, err = buf.ReadFrom(gz); err != nil {
+		return nil, fmt.Errorf("failed to read gzip reader: %s", err)
 	}
 
 	res = buf.Bytes()
@@ -52,15 +47,15 @@ func GzipDecompress(data []byte) (res []byte, err error) {
 func BrotliCompress(data []byte) (res []byte, err error) {
 	var buf bytes.Buffer
 	w := brotli.NewWriter(&buf)
-	_, e := w.Write(data)
-	if e != nil {
-		err = fmt.Errorf("failed to write brotli writer: %s", e)
-		return
+
+	if _, err = w.Write(data); err != nil {
+		return nil, fmt.Errorf("failed to write brotli writer: %s", err)
 	}
-	if e := w.Close(); e != nil {
-		err = fmt.Errorf("failed to close brotli writer: %s", e)
-		return
+
+	if err = w.Close(); err != nil {
+		return nil, fmt.Errorf("failed to close brotli writer: %s", err)
 	}
+
 	res = buf.Bytes()
 	return
 }
@@ -68,11 +63,10 @@ func BrotliCompress(data []byte) (res []byte, err error) {
 func BrotliDecompress(data []byte) (res []byte, err error) {
 	var buf bytes.Buffer
 	r := brotli.NewReader(bytes.NewReader(data))
-	_, e := buf.ReadFrom(r)
-	if e != nil {
-		err = fmt.Errorf("failed to read brotli reader: %s", e)
-		return
+	if _, err = buf.ReadFrom(r); err != nil {
+		return nil, fmt.Errorf("failed to read brotli reader: %s", err)
 	}
+
 	res = buf.Bytes()
 	return
 }

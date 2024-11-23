@@ -43,6 +43,9 @@ func TestDecryptAES(t *testing.T) {
 			t.Fatalf("EncryptAES failed for key length %d: %v", keyLength, err)
 		}
 
+		t.Logf("Key length: %d", len(key))
+		t.Logf("Ciphertext length: %d", len(cipherText))
+
 		decryptedText, err := DecryptAESGCM(cipherText, key)
 		if err != nil {
 			t.Fatalf("DecryptAES failed for key length %d: %v", keyLength, err)

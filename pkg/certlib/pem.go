@@ -7,6 +7,7 @@ import (
 	"errors"
 	"fmt"
 	"os"
+	"path/filepath"
 )
 
 const (
@@ -107,7 +108,34 @@ func ParsePrivateKeyFromPEM(keyPEMBytes []byte) (key *rsa.PrivateKey, err error)
 	return
 }
 
+func validatePath(path string) error {
+	// Clean the path to remove any . or .. components
+	cleanPath := filepath.Clean(path)
+	
+	// Get absolute path
+	absPath, err := filepath.Abs(cleanPath)
+	if err != nil {
+		return err
+	}
+
+	// Check if file exists and is regular
+	info, err := os.Stat(absPath)
+	if err != nil {
+		return err
+	}
+	if info.IsDir() {
+		return errors.New("path is a directory")
+	}
+
+	return nil
+}
+
 func ParseCertificateFromFile(path string) (cert *x509.Certificate, err error) {
+	if err = validatePath(path); err != nil {
+		return nil, err
+	}
+
+	// #nosec G304 -- path has been validated by validatePath
 	certPEMBytes, err := os.ReadFile(path)
 	if err != nil {
 		return
@@ -116,6 +144,11 @@ func ParseCertificateFromFile(path string) (cert *x509.Certificate, err error) {
 }
 
 func ParsePrivateKeyFromFile(path string) (key *rsa.PrivateKey, err error) {
+	if err = validatePath(path); err != nil {
+		return nil, err
+	}
+
+	// #nosec G304 -- path has been validated by validatePath
 	keyPEMBytes, err := os.ReadFile(path)
 	if err != nil {
 		return

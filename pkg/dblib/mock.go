@@ -20,7 +20,10 @@ type GormMock struct {
 }
 
 func NewGormPostgresMock(slowThreshold time.Duration) (*GormMock, error) {
-	os.Setenv("LOG_LEVEL", "debug")
+	err := os.Setenv("LOG_LEVEL", "debug")
+	if err != nil {
+		return nil, fmt.Errorf("failed to set LOG_LEVEL env var: %w", err)
+	}
 	testDB, mock, err := sqlmock.New()
 	if err != nil {
 		return nil, fmt.Errorf("failed to create sqlmock db: %w", err)

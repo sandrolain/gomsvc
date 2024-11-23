@@ -3,6 +3,7 @@ package redislib
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"time"
 
 	"go.jetpack.io/typeid"
@@ -49,37 +50,46 @@ func Subscribe[T any](channel string, receiver ReceiverFunc[T], onError ErrorFun
 		onError = func(err error) {}
 	}
 
-	ctx := context.Background()
+	ctx, cancel := context.WithCancel(context.Background())
 	subscription := redisClient.Subscribe(ctx, channel)
 
 	closed := false
 
 	go func() {
+		defer func() {
+			closed = true
+			err := subscription.Close()
+			if err != nil {
+				onError(fmt.Errorf("failed to close subscription: %v", err))
+			}
+		}()
+
 		for {
-			if closed {
+			select {
+			case <-ctx.Done():
 				return
-			}
+			case msg := <-subscription.Channel():
+				if msg == nil {
+					continue
+				}
 
-			msg, err := subscription.ReceiveMessage(ctx)
-			if err != nil {
-				onError(err)
-				continue
-			}
+				var message Message[T]
+				err := json.Unmarshal([]byte(msg.Payload), &message)
+				if err != nil {
+					onError(fmt.Errorf("failed to unmarshal message: %v", err))
+					continue
+				}
 
-			var payload Message[T]
-			err = json.Unmarshal([]byte(msg.Payload), &payload)
-			if err != nil {
-				onError(err)
-				continue
+				receiver(message)
 			}
-
-			receiver(payload)
 		}
 	}()
 
 	return func() {
-		closed = true
-		subscription.Close()
+		cancel()
+		for !closed {
+			time.Sleep(10 * time.Millisecond)
+		}
 	}
 }
 

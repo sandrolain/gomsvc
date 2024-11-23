@@ -8,7 +8,8 @@ import (
 	"io"
 )
 
-// EncryptAES encrypts the plaintext using the provided key
+// EncryptAESGCM encrypts the plaintext using the provided key with AES-GCM mode.
+// It generates a secure random nonce for each encryption operation.
 func EncryptAESGCM(plainText, key []byte) ([]byte, error) {
 	block, err := aes.NewCipher(key)
 	if err != nil {
@@ -20,24 +21,23 @@ func EncryptAESGCM(plainText, key []byte) ([]byte, error) {
 		return nil, err
 	}
 
-	cipherText := make([]byte, gcm.NonceSize()+len(plainText))
-	nonce := cipherText[:gcm.NonceSize()]
+	// Generate a random nonce for each encryption
+	nonce := make([]byte, gcm.NonceSize())
 	if _, err := io.ReadFull(rand.Reader, nonce); err != nil {
 		return nil, err
 	}
 
-	return gcm.Seal(cipherText[:gcm.NonceSize()], nonce, plainText, nil), nil
+	// Seal will append the ciphertext to the nonce
+	// The nonce is prepended to the ciphertext and will be used for decryption
+	return gcm.Seal(nonce, nonce, plainText, nil), nil
 }
 
-// DecryptAES decrypts the ciphertext using the provided key
+// DecryptAESGCM decrypts the ciphertext using the provided key with AES-GCM mode.
+// The nonce is expected to be prepended to the ciphertext as performed by EncryptAESGCM.
 func DecryptAESGCM(cipherText, key []byte) ([]byte, error) {
 	block, err := aes.NewCipher(key)
 	if err != nil {
 		return nil, err
-	}
-
-	if len(cipherText) < aes.BlockSize {
-		return nil, errors.New("ciphertext must be at least AES.BlockSize bytes long")
 	}
 
 	gcm, err := cipher.NewGCM(block)
@@ -50,11 +50,18 @@ func DecryptAESGCM(cipherText, key []byte) ([]byte, error) {
 		return nil, errors.New("ciphertext is too short")
 	}
 
-	nonce, cipherText := cipherText[:nonceSize], cipherText[nonceSize:]
-	plainText, err := gcm.Open(nil, nonce, cipherText, nil)
-	if err != nil {
-		return nil, err
+	// Extract the nonce from the ciphertext
+	nonce := cipherText[:nonceSize]
+	if len(nonce) != nonceSize {
+		return nil, errors.New("invalid nonce size")
 	}
 
-	return plainText, nil
+	// Extract the actual ciphertext after the nonce
+	encryptedData := cipherText[nonceSize:]
+	if len(encryptedData) < 1 {
+		return nil, errors.New("encrypted data is empty")
+	}
+
+	// #nosec G407 -- nonce is not hardcoded, it is extracted from the ciphertext
+	return gcm.Open(nil, nonce, encryptedData, nil)
 }

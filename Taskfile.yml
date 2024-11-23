@@ -41,12 +41,18 @@ tasks:
       - rm -rf bin/
       - rm -rf dist/
 
+  gosec:
+    desc: Run security checks with gosec
+    cmds:
+      - bash scripts/gosec.sh
+
   check:
-    desc: Run all checks (fmt, lint, test)
+    desc: Run all checks (fmt, lint, test, security)
     cmds:
       - task: fmt
       - task: lint
       - task: test
+      - task: gosec
 
   install-deps:
     desc: Install project dependencies

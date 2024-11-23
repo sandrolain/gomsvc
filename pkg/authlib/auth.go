@@ -1,3 +1,6 @@
+// Package authlib provides OAuth2 token management and JWT validation functionality.
+// It implements client credentials flow for OAuth2 authentication and includes
+// caching mechanisms for both access tokens and JWK Sets.
 package authlib
 
 import (
@@ -13,7 +16,8 @@ import (
 	"github.com/lestrrat-go/jwx/jwt"
 )
 
-// Error types for better error handling
+// ErrTokenFetch represents an error that occurs during token fetching operations.
+// It includes both a descriptive message and the underlying cause of the error.
 type ErrTokenFetch struct {
 	Message string
 	Cause   error
@@ -26,44 +30,54 @@ func (e *ErrTokenFetch) Error() string {
 	return e.Message
 }
 
-// MetricsHook defines interface for monitoring operations
+// MetricsHook defines an interface for monitoring token operations.
+// Implementations can track token fetches, cache hits, and cache misses.
 type MetricsHook interface {
+	// OnTokenFetch is called after a token fetch attempt with the duration and any error
 	OnTokenFetch(duration time.Duration, err error)
+	// OnCacheHit is called when a valid token is found in cache
 	OnCacheHit()
+	// OnCacheMiss is called when a token needs to be fetched
 	OnCacheMiss()
 }
 
-// RetryConfig defines retry behavior
+// RetryConfig defines parameters for retry behavior during token fetching.
 type RetryConfig struct {
+	// MaxAttempts is the maximum number of retry attempts
 	MaxAttempts int
+	// WaitTime is the duration to wait between retry attempts
 	WaitTime    time.Duration
 }
 
-// TokenProvider defines the interface for token operations
+// TokenProvider defines the interface for token operations.
+// Implementations should handle token retrieval and caching.
 type TokenProvider interface {
+	// GetToken retrieves a valid OAuth token, either from cache or by fetching a new one
 	GetToken(ctx context.Context) (string, error)
 }
 
-// TokenCache holds the JWT token and its expiration time
+// TokenCache implements TokenProvider interface and handles caching of OAuth tokens.
+// It automatically refreshes expired tokens and implements retry logic for token fetching.
 type TokenCache struct {
-	Token      string
-	ExpiresAt  time.Time
-	Config     OAuthConfig
-	RetryConf  RetryConfig
-	Metrics    MetricsHook
+	Token      string        // The current OAuth token
+	ExpiresAt  time.Time    // Expiration time of the current token
+	Config     OAuthConfig  // OAuth configuration settings
+	RetryConf  RetryConfig // Retry behavior configuration
+	Metrics    MetricsHook // Optional metrics collection
 	httpClient *http.Client
 }
 
-// OAuthConfig contains the configuration for OAuth client credentials flow
+// OAuthConfig contains the configuration for OAuth client credentials flow.
+// It includes all necessary parameters for token endpoint authentication.
 type OAuthConfig struct {
-	ClientID     string
-	ClientSecret string
+	ClientID     string            // OAuth client identifier
+	ClientSecret string            // OAuth client secret
 	TokenURL     string            // Full URL to the token endpoint
 	Headers      map[string]string // Additional headers for token request
-	GrantType    string           // Defaults to "client_credentials" if empty
+	GrantType    string           // OAuth grant type, defaults to "client_credentials"
 }
 
-// NewTokenCache creates a new TokenCache instance
+// NewTokenCache creates a new TokenCache instance.
 func NewTokenCache(config OAuthConfig) *TokenCache {
 	if config.GrantType == "" {
 		config.GrantType = "client_credentials"
@@ -78,22 +92,22 @@ func NewTokenCache(config OAuthConfig) *TokenCache {
 	}
 }
 
-// SetHTTPClient allows setting a custom HTTP client
+// SetHTTPClient allows setting a custom HTTP client.
 func (cache *TokenCache) SetHTTPClient(client *http.Client) {
 	cache.httpClient = client
 }
 
-// SetMetricsHook sets the metrics hook for monitoring
+// SetMetricsHook sets the metrics hook for monitoring.
 func (cache *TokenCache) SetMetricsHook(hook MetricsHook) {
 	cache.Metrics = hook
 }
 
-// SetRetryConfig configures retry behavior
+// SetRetryConfig configures retry behavior.
 func (cache *TokenCache) SetRetryConfig(config RetryConfig) {
 	cache.RetryConf = config
 }
 
-// GetToken handles getting, validating, and caching the JWT token
+// GetToken handles getting, validating, and caching the JWT token.
 func (cache *TokenCache) GetToken(ctx context.Context) (string, error) {
 	// If the token is already in cache and it's not expired, return it
 	if cache.Token != "" && time.Now().Before(cache.ExpiresAt) {
@@ -137,7 +151,7 @@ func (cache *TokenCache) GetToken(ctx context.Context) (string, error) {
 	return cache.Token, nil
 }
 
-// fetchNewTokenWithRetry implements retry logic for token fetching
+// fetchNewTokenWithRetry implements retry logic for token fetching.
 func (cache *TokenCache) fetchNewTokenWithRetry(ctx context.Context) (map[string]interface{}, error) {
 	var lastErr error
 	for attempt := 0; attempt < cache.RetryConf.MaxAttempts; attempt++ {
@@ -159,7 +173,7 @@ func (cache *TokenCache) fetchNewTokenWithRetry(ctx context.Context) (map[string
 	return nil, fmt.Errorf("all retry attempts failed: %w", lastErr)
 }
 
-// fetchNewToken retrieves a new token from the authorization server
+// fetchNewToken retrieves a new token from the authorization server.
 func (cache *TokenCache) fetchNewToken(ctx context.Context) (map[string]interface{}, error) {
 	config := cache.Config
 	data := fmt.Sprintf("grant_type=%s&client_id=%s&client_secret=%s",

@@ -140,7 +140,16 @@ func (s *StreamConsumer[T]) Consume() error {
 			}).Result()
 
 			if err != nil {
-				svc.Error("cannot read messages stream", err)
+				_ = svc.Error("cannot read messages stream",
+					err,
+					"stream", s.stream,
+					"group", s.group,
+					"consumer", s.consumer,
+				)
+				if err != redis.Nil {
+					// Only sleep on real errors, not on empty results
+					time.Sleep(time.Second)
+				}
 				continue
 			}
 
@@ -150,7 +159,21 @@ func (s *StreamConsumer[T]) Consume() error {
 				for _, msg := range item.Messages {
 					message, err := parseStreamMessage[T](&msg)
 					if err != nil {
-						svc.Error("cannot parse message", err)
+						svc.Logger().Error("cannot parse message",
+							"error", err,
+							"message_id", msg.ID,
+							"stream", s.stream,
+						)
+						// Acknowledge the message even if we can't parse it
+						// to prevent endless retry of unparseable messages
+						if ackErr := redisClient.XAck(s.ctx, s.stream, s.group, msg.ID).Err(); ackErr != nil {
+							svc.Logger().Error("failed to acknowledge unparseable message",
+								"error", ackErr,
+								"original_error", err,
+								"message_id", msg.ID,
+								"stream", s.stream,
+							)
+						}
 						continue
 					}
 					s.Emitter.Emit(message)

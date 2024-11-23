@@ -40,3 +40,27 @@ jobs:
         with:
           name: coverage-report-html
           path: coverage.html
+
+  security:
+    name: Security Scan
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+
+      - name: Set up Go
+        uses: actions/setup-go@v4
+        with:
+          go-version: "1.23"
+          cache: true
+
+      - name: Run Gosec Security Scanner
+        uses: securego/gosec@master
+        with:
+          args: ./...
+
+      - name: Upload Gosec Report
+        if: always()
+        uses: actions/upload-artifact@v3
+        with:
+          name: gosec-report
+          path: gosec.sarif

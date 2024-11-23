@@ -14,16 +14,23 @@ type ClientOptions struct {
 	Url         string `validate:"required,url"`
 	Logger      *slog.Logger
 	Credentials *Credentials
+	ServerName  string // Added for TLS verification
 }
 
 func CreateClient[T any](new func(grpc.ClientConnInterface) T, opts ClientOptions) (res T, err error) {
 	dialOptions := []grpc.DialOption{}
 
 	if opts.Credentials != nil {
+		if opts.ServerName == "" {
+			err = fmt.Errorf("ServerName is required when using TLS credentials")
+			return
+		}
+
 		creds, e := certlib.LoadClientTLSCredentials(certlib.ClientTLSConfigArgs[string]{
-			Cert: opts.Credentials.CertPath,
-			Key:  opts.Credentials.KeyPath,
-			CA:   opts.Credentials.CAPath,
+			Cert:       opts.Credentials.CertPath,
+			Key:        opts.Credentials.KeyPath,
+			CA:         opts.Credentials.CAPath,
+			ServerName: opts.ServerName,
 		})
 
 		if e != nil {

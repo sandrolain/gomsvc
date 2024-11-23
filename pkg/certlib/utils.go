@@ -2,23 +2,19 @@ package certlib
 
 import (
 	"crypto/rsa"
-	"crypto/sha1"
+	"crypto/sha256"
 	"crypto/tls"
 	"crypto/x509"
 	"crypto/x509/pkix"
-	"fmt"
+	"encoding/hex"
 	"time"
 )
 
-func hashPublicKey(key *rsa.PublicKey) ([]byte, error) {
-	b, err := x509.MarshalPKIXPublicKey(key)
-	if err != nil {
-		return nil, fmt.Errorf("Unable to hash key: %s", err)
-	}
-
-	h := sha1.New()
+func hashPublicKey(key *rsa.PublicKey) string {
+	b := key.N.Bytes()
+	h := sha256.New()
 	h.Write(b)
-	return h.Sum(nil), nil
+	return hex.EncodeToString(h.Sum(nil))
 }
 
 // GenerateBasicCA creates a root CA with basic settings
@@ -27,7 +23,7 @@ func GenerateBasicCA(commonName string, organization string, country string, dur
 		Subject: pkix.Name{
 			CommonName:   commonName,
 			Organization: []string{organization},
-			Country:     []string{country},
+			Country:      []string{country},
 		},
 		Duration: duration,
 	})
@@ -39,7 +35,7 @@ func GenerateBasicIntermediateCA(commonName string, organization string, country
 		Subject: pkix.Name{
 			CommonName:   commonName,
 			Organization: []string{organization},
-			Country:     []string{country},
+			Country:      []string{country},
 		},
 		Issuer:   issuer,
 		Duration: duration,
@@ -82,6 +78,7 @@ func CreateCertPool(certs ...*x509.Certificate) *x509.CertPool {
 func CreateTLSConfig(cert CertKey, roots *x509.CertPool) *tls.Config {
 	return &tls.Config{
 		Certificates: []tls.Certificate{*cert.TLSCertificate()},
-		RootCAs:     roots,
+		RootCAs:      roots,
+		MinVersion:   tls.VersionTLS12,
 	}
 }

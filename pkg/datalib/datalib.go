@@ -69,8 +69,10 @@ func ReduceSlice[T any, R any](s []T, res R, f func(R, T) R) R {
 
 func MapToSlice[K comparable, V any, R any](m map[K]V, f func(K, V) R) []R {
 	res := make([]R, len(m))
+	i := 0
 	for k, v := range m {
-		res = append(res, f(k, v))
+		res[i] = f(k, v)
+		i++
 	}
 	return res
 }

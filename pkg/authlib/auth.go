@@ -46,7 +46,7 @@ type RetryConfig struct {
 	// MaxAttempts is the maximum number of retry attempts
 	MaxAttempts int
 	// WaitTime is the duration to wait between retry attempts
-	WaitTime    time.Duration
+	WaitTime time.Duration
 }
 
 // TokenProvider defines the interface for token operations.
@@ -59,9 +59,9 @@ type TokenProvider interface {
 // TokenCache implements TokenProvider interface and handles caching of OAuth tokens.
 // It automatically refreshes expired tokens and implements retry logic for token fetching.
 type TokenCache struct {
-	Token      string        // The current OAuth token
-	ExpiresAt  time.Time    // Expiration time of the current token
-	Config     OAuthConfig  // OAuth configuration settings
+	Token      string      // The current OAuth token
+	ExpiresAt  time.Time   // Expiration time of the current token
+	Config     OAuthConfig // OAuth configuration settings
 	RetryConf  RetryConfig // Retry behavior configuration
 	Metrics    MetricsHook // Optional metrics collection
 	httpClient *http.Client
@@ -74,7 +74,7 @@ type OAuthConfig struct {
 	ClientSecret string            // OAuth client secret
 	TokenURL     string            // Full URL to the token endpoint
 	Headers      map[string]string // Additional headers for token request
-	GrantType    string           // OAuth grant type, defaults to "client_credentials"
+	GrantType    string            // OAuth grant type, defaults to "client_credentials"
 }
 
 // NewTokenCache creates a new TokenCache instance.
@@ -187,7 +187,7 @@ func (cache *TokenCache) fetchNewToken(ctx context.Context) (map[string]interfac
 
 	// Set default Content-Type header
 	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
-	
+
 	// Set additional headers if provided
 	for key, value := range config.Headers {
 		req.Header.Set(key, value)

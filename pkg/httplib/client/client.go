@@ -13,33 +13,33 @@ import (
 
 // Common errors
 var (
-	ErrNilContext       = errors.New("context cannot be nil")
-	ErrEmptyURL        = errors.New("URL cannot be empty")
-	ErrInvalidResponse = errors.New("invalid response")
-	ErrRequestFailed   = errors.New("request failed")
-	ErrInvalidTimeout  = errors.New("timeout cannot be negative")
+	ErrNilContext        = errors.New("context cannot be nil")
+	ErrEmptyURL          = errors.New("URL cannot be empty")
+	ErrInvalidResponse   = errors.New("invalid response")
+	ErrRequestFailed     = errors.New("request failed")
+	ErrInvalidTimeout    = errors.New("timeout cannot be negative")
 	ErrInvalidRetryCount = errors.New("retry count cannot be negative")
-	ErrInvalidRetryWait = errors.New("retry wait cannot be negative")
+	ErrInvalidRetryWait  = errors.New("retry wait cannot be negative")
 )
 
 type Init struct {
-	Params      map[string]string
-	Query       map[string]string
-	Headers     map[string]string
-	FormData    map[string]string
-	Files       map[string]string
-	Body        interface{}
-	Timeout     time.Duration
-	RetryCount  int
-	RetryWait   time.Duration
-	BaseURL     string
+	Params     map[string]string
+	Query      map[string]string
+	Headers    map[string]string
+	FormData   map[string]string
+	Files      map[string]string
+	Body       interface{}
+	Timeout    time.Duration
+	RetryCount int
+	RetryWait  time.Duration
+	BaseURL    string
 }
 
 type Response[T any] struct {
 	StatusCode int
 	Headers    http.Header
-	Resty     *resty.Response
-	Body      T
+	Resty      *resty.Response
+	Body       T
 }
 
 func validateInit(init *Init) error {

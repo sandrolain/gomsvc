@@ -15,7 +15,7 @@ func setupPanicTest() {
 
 func TestPanicWithError(t *testing.T) {
 	setupPanicTest()
-	
+
 	t.Run("no error returns value", func(t *testing.T) {
 		result := PanicWithError("test", nil)
 		assert.Equal(t, "test", result)
@@ -30,7 +30,7 @@ func TestPanicWithError(t *testing.T) {
 
 func TestPanicIfError(t *testing.T) {
 	setupPanicTest()
-	
+
 	t.Run("no error does not panic", func(t *testing.T) {
 		assert.NotPanics(t, func() {
 			PanicIfError(nil)

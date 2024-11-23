@@ -21,7 +21,7 @@ func setupTest() {
 
 func TestLogLevel(t *testing.T) {
 	setupTest()
-	
+
 	tests := []struct {
 		level    string
 		expected slog.Level
@@ -43,7 +43,7 @@ func TestLogLevel(t *testing.T) {
 
 func TestLoggerNamespace(t *testing.T) {
 	setupTest()
-	
+
 	// Setup JSON logger to capture output
 	var buf bytes.Buffer
 	handler := slog.NewJSONHandler(&buf, &slog.HandlerOptions{Level: loggerLevel})
@@ -66,7 +66,7 @@ func TestLoggerNamespace(t *testing.T) {
 
 func TestError(t *testing.T) {
 	setupTest()
-	
+
 	var buf bytes.Buffer
 	handler := slog.NewJSONHandler(&buf, &slog.HandlerOptions{Level: loggerLevel})
 	logger = slog.New(handler)
@@ -92,7 +92,7 @@ func TestError(t *testing.T) {
 
 func TestInitLogger(t *testing.T) {
 	setupTest()
-	
+
 	tests := []struct {
 		name       string
 		env        DefaultEnv

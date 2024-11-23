@@ -62,12 +62,12 @@ type KeyProvider interface {
 // JWKCache implements KeyProvider interface and handles caching of JWK Sets.
 // It automatically refreshes expired JWK Sets and implements retry logic for JWK fetching.
 type JWKCache struct {
-	jwkSet     jwk.Set          // The current JWK Set
-	expiresAt  time.Time        // Expiration time of the current JWK Set
-	config     JWKConfig        // JWK configuration settings
-	httpClient *http.Client     // HTTP client for making requests
-	metrics    JWKMetricsHook   // Optional metrics collection
-	retryConf  RetryConfig      // Retry behavior configuration
+	jwkSet     jwk.Set        // The current JWK Set
+	expiresAt  time.Time      // Expiration time of the current JWK Set
+	config     JWKConfig      // JWK configuration settings
+	httpClient *http.Client   // HTTP client for making requests
+	metrics    JWKMetricsHook // Optional metrics collection
+	retryConf  RetryConfig    // Retry behavior configuration
 }
 
 // JWKConfig contains configuration for JWK fetching and validation.
@@ -200,7 +200,7 @@ func (cache *JWKCache) fetchJWKSet(ctx context.Context) (jwk.Set, error) {
 // TokenValidator handles JWT validation using JWK Sets.
 // It supports various validation options and automatic key rotation.
 type TokenValidator struct {
-	keyProvider KeyProvider           // Provider for JWK Sets
+	keyProvider KeyProvider          // Provider for JWK Sets
 	options     []jwt.ValidateOption // JWT validation options
 }
 

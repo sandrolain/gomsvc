@@ -36,7 +36,7 @@ func TestGetJSON(t *testing.T) {
 		expectedStatus int
 		expectedBody   *TestResponse
 		expectedError  error
-		init          Init
+		init           Init
 	}{
 		{
 			name: "successful request",
@@ -303,7 +303,7 @@ func TestValidation(t *testing.T) {
 			url:  "http://example.com/test",
 			init: Init{
 				RetryCount: -1,
-				BaseURL: "http://example.com",
+				BaseURL:    "http://example.com",
 			},
 			expectedError: ErrInvalidRetryCount,
 		},

@@ -107,7 +107,7 @@ func TestCertificateErrors(t *testing.T) {
 			Subject: pkix.Name{
 				CommonName:   "Test Invalid Key Size",
 				Organization: []string{"Test Org"},
-				Country:     []string{"US"},
+				Country:      []string{"US"},
 			},
 			Duration: 24 * time.Hour,
 			KeySize:  1024, // Too small
@@ -122,7 +122,7 @@ func TestCertificateErrors(t *testing.T) {
 			Subject: pkix.Name{
 				CommonName:   "Test Missing Duration",
 				Organization: []string{"Test Org"},
-				Country:     []string{"US"},
+				Country:      []string{"US"},
 			},
 		})
 		if err == nil {
@@ -135,7 +135,7 @@ func TestCertificateErrors(t *testing.T) {
 			Subject: pkix.Name{
 				CommonName:   "Test Missing Issuer",
 				Organization: []string{"Test Org"},
-				Country:     []string{"US"},
+				Country:      []string{"US"},
 			},
 			Duration: 24 * time.Hour,
 		})
@@ -181,10 +181,10 @@ func TestCertificateErrors(t *testing.T) {
 			Subject: pkix.Name{
 				CommonName:   "Test Expired Root CA",
 				Organization: []string{"Test Org"},
-				Country:     []string{"US"},
+				Country:      []string{"US"},
 			},
-			NotBefore: time.Now().Add(-2 * time.Hour),  // 2 hours ago
-			Duration:  time.Hour,                        // 1 hour duration
+			NotBefore: time.Now().Add(-2 * time.Hour), // 2 hours ago
+			Duration:  time.Hour,                      // 1 hour duration
 		})
 		if err != nil {
 			t.Fatal(err)
@@ -251,9 +251,9 @@ func TestServerIdentityValidation(t *testing.T) {
 			Subject: pkix.Name{
 				CommonName: "Test Server",
 			},
-			Issuer:    rootCA,
-			Duration:  24 * time.Hour,
-			DNSNames:  []string{""},
+			Issuer:   rootCA,
+			Duration: 24 * time.Hour,
+			DNSNames: []string{""},
 		})
 		if err == nil {
 			t.Error("Expected error for empty DNS name, got nil")
@@ -265,9 +265,9 @@ func TestServerIdentityValidation(t *testing.T) {
 			Subject: pkix.Name{
 				CommonName: "Test Server",
 			},
-			Issuer:       rootCA,
-			Duration:     24 * time.Hour,
-			IPAddresses:  []net.IP{net.IPv4zero},
+			Issuer:      rootCA,
+			Duration:    24 * time.Hour,
+			IPAddresses: []net.IP{net.IPv4zero},
 		})
 		if err == nil {
 			t.Error("Expected error for unspecified IP address, got nil")

@@ -15,9 +15,9 @@ import (
 )
 
 var (
-	serviceUuid string
+	serviceUuid     string
 	serviceUuidOnce sync.Once
-	serviceUuidMu sync.RWMutex
+	serviceUuidMu   sync.RWMutex
 )
 
 var (
@@ -52,7 +52,7 @@ var osExit = os.Exit // allow to be mocked in tests
 func Service[C any](opts ServiceOptions, fn ServiceFunc[C]) {
 	v := validator.New()
 	PanicIfError(v.Struct(opts))
-	
+
 	serviceUuidOnce.Do(func() {
 		uuid := PanicWithError(typeid.From(cleanTypeIdName(opts.Name), "")).String()
 		serviceUuidMu.Lock()
@@ -100,12 +100,12 @@ func Service[C any](opts ServiceOptions, fn ServiceFunc[C]) {
 
 func Exit(code int) {
 	var wg sync.WaitGroup
-	
+
 	exitCallbacksMu.RLock()
 	callbacks := make([]OnExitFunc, len(exitCallbacks))
 	copy(callbacks, exitCallbacks)
 	exitCallbacksMu.RUnlock()
-	
+
 	for _, fn := range callbacks {
 		wg.Add(1)
 		go func(callback OnExitFunc) {

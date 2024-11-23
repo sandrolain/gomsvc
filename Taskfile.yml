@@ -1,4 +1,4 @@
-version: '3'
+version: "3"
 
 vars:
   GO_FILES:
@@ -20,9 +20,9 @@ tasks:
       - bash scripts/gen-grpc.sh
 
   fmt:
-    desc: Format Go code
+    desc: Format Go code with simplification
     cmds:
-      - gofmt -w {{.GO_FILES}}
+      - gofmt -s -l -w .
 
   lint:
     desc: Run linters

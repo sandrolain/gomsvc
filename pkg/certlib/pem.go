@@ -111,7 +111,7 @@ func ParsePrivateKeyFromPEM(keyPEMBytes []byte) (key *rsa.PrivateKey, err error)
 func validatePath(path string) error {
 	// Clean the path to remove any . or .. components
 	cleanPath := filepath.Clean(path)
-	
+
 	// Get absolute path
 	absPath, err := filepath.Abs(cleanPath)
 	if err != nil {

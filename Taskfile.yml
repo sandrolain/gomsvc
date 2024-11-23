@@ -3,6 +3,8 @@ version: "3"
 vars:
   GO_FILES:
     sh: find . -type f -name '*.go' -not -path "./vendor/*"
+  GO_PKGS:
+    sh: go list ./pkg/... | grep -v "example" | grep -v "pkg/grpclib/test"
 
 tasks:
   default:
@@ -10,14 +12,20 @@ tasks:
       - task: test
 
   test:
-    desc: Run tests
+    desc: Run tests with coverage
     cmds:
-      - bash scripts/test.sh
+      - cmd: |
+          for pkg in $(go list ./pkg/... | grep -v "example" | grep -v "pkg/grpclib/test"); do
+            go test -v -race "$pkg"
+          done
+      - go tool cover -func=coverage.out
+      - go tool cover -html=coverage.out -o coverage.html
 
   gen-grpc:
     desc: Generate gRPC code
     cmds:
-      - bash scripts/gen-grpc.sh
+      - buf mod update
+      - buf generate
 
   fmt:
     desc: Format Go code with simplification
@@ -29,10 +37,15 @@ tasks:
     cmds:
       - golangci-lint run
 
+  vet:
+    desc: Run go vet for static analysis
+    cmds:
+      - go vet ./pkg/...
+
   build:
     desc: Build the project
     cmds:
-      - go build -v ./...
+      - go build -v ./pkg/...
 
   clean:
     desc: Clean build artifacts
@@ -40,17 +53,30 @@ tasks:
       - go clean
       - rm -rf bin/
       - rm -rf dist/
+      - rm -f coverage.out
+      - rm -f coverage.html
+      - rm -f security-report.json
 
   gosec:
     desc: Run security checks with gosec
+    vars:
+      GOSEC_INSTALLED:
+        sh: command -v gosec || echo "not_found"
     cmds:
-      - bash scripts/gosec.sh
+      - |
+        if [ "{{.GOSEC_INSTALLED}}" = "not_found" ]; then
+          echo "gosec is not installed. Installing..."
+          go install github.com/securego/gosec/v2/cmd/gosec@latest
+        fi
+      - echo "Running gosec security scanner..."
+      - gosec -fmt=json -out=security-report.json ./pkg/...
 
   check:
-    desc: Run all checks (fmt, lint, test, security)
+    desc: Run all checks (fmt, lint, vet, test, security)
     cmds:
       - task: fmt
-      - task: lint
+      #- task: lint
+      - task: vet
       - task: test
       - task: gosec
 

@@ -6,3 +6,4 @@ pkg/certlib/*.pem
 .trash/
 coverage.out
 coverage.html
+security-report.json

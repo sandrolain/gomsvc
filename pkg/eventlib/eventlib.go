@@ -121,7 +121,4 @@ func (e *Emitter[T]) End() {
 	e.mu.Lock()
 	e.fns = nil
 	e.mu.Unlock()
-
-	// Close channel last, after all goroutines have likely finished
-	close(e.ch)
 }

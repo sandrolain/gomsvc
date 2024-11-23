@@ -116,20 +116,35 @@ func TestEmitter_End(t *testing.T) {
 	ctx := context.Background()
 	emitter := NewEmitter[string](ctx, 1)
 
+	// Subscribe to verify no events are received after End()
+	received := make(chan string, 1)
+	emitter.Subscribe(func(data string) error {
+		received <- data
+		return nil
+	}, nil)
+
+	// First emit should work
+	emitter.Emit("before-end")
+	select {
+	case msg := <-received:
+		if msg != "before-end" {
+			t.Errorf("Expected to receive 'before-end', got %s", msg)
+		}
+	case <-time.After(time.Second):
+		t.Error("Timeout waiting for first emit")
+	}
+
 	emitter.End()
 
 	// Try to emit after End()
-	done := make(chan bool)
-	go func() {
-		emitter.Emit("test")
-		done <- true
-	}()
+	emitter.Emit("after-end")
 
+	// Should not receive any more events
 	select {
-	case <-done:
-		// Emit completed (expected due to context cancellation)
-	case <-time.After(time.Second):
-		t.Error("Emit() blocked after End()")
+	case msg := <-received:
+		t.Errorf("Should not receive events after End(), got %s", msg)
+	case <-time.After(100 * time.Millisecond):
+		// Expected timeout
 	}
 
 	if len(emitter.fns) != 0 {

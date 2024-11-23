@@ -15,16 +15,16 @@
 //	    JWKSURL:        "https://auth.example.com/.well-known/jwks.json",
 //	    ExpirationTime: 24 * time.Hour,
 //	}
-//	
+//
 //	// Create JWK cache with automatic refresh
 //	jwkCache := authlib.NewJWKCache(config)
-//	
+//
 //	// Create validator with required options
 //	validator := authlib.NewTokenValidator(jwkCache,
 //	    jwt.WithIssuer("https://auth.example.com"),
 //	    jwt.WithAudience("your-app"),
 //	)
-//	
+//
 //	// Validate a token
 //	token, claims, err := validator.ValidateToken(context.Background(), "your-jwt-token")
 package authlib

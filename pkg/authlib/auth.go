@@ -17,15 +17,15 @@
 //	    ClientSecret: "your-client-secret",
 //	    TokenURL:     "https://auth.example.com/token",
 //	}
-//	
+//
 //	cache := authlib.NewTokenCache(config)
-//	
+//
 //	// Optional: Configure custom retry behavior
 //	cache.SetRetryConfig(authlib.RetryConfig{
 //	    MaxAttempts: 3,
 //	    WaitTime:    time.Second,
 //	})
-//	
+//
 //	// Get a token (automatically handles caching and refresh)
 //	token, err := cache.GetToken(context.Background())
 package authlib

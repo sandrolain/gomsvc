@@ -14,11 +14,7 @@ tasks:
   test:
     desc: Run tests with coverage
     cmds:
-      - cmd: |
-          for pkg in $(go list ./pkg/... | grep -v "example" | grep -v "pkg/grpclib/test"); do
-            go test -v -race "$pkg"
-          done
-      - go tool cover -func=coverage.out
+      - go test -v -race -coverprofile=coverage.out -covermode=atomic $(go list ./pkg/... | grep -v "example" | grep -v "pkg/grpclib/test")
       - go tool cover -html=coverage.out -o coverage.html
 
   gen-grpc:
@@ -85,3 +81,11 @@ tasks:
     cmds:
       - go mod download
       - go mod tidy
+
+  docs:
+    desc: Start godoc server for project documentation
+    cmds:
+      - cmd: |
+          echo "Starting godoc server at http://localhost:6060"
+          echo "View the documentation by navigating to http://localhost:6060/pkg/github.com/sandrolain/gomsvc/"
+          godoc -http=:6060

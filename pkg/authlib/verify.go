@@ -1,4 +1,32 @@
 // Package authlib provides OAuth2 token management and JWT validation functionality.
+// This file implements JSON Web Key (JWK) Set caching and JWT token validation,
+// supporting automatic key rotation and various validation options.
+//
+// Key Features:
+//   - JWK Set caching with automatic refresh
+//   - JWT validation with configurable options
+//   - Support for key rotation
+//   - Metrics collection for monitoring
+//   - Retry mechanisms for resilience
+//
+// Example Usage:
+//
+//	config := authlib.JWKConfig{
+//	    JWKSURL:        "https://auth.example.com/.well-known/jwks.json",
+//	    ExpirationTime: 24 * time.Hour,
+//	}
+//	
+//	// Create JWK cache with automatic refresh
+//	jwkCache := authlib.NewJWKCache(config)
+//	
+//	// Create validator with required options
+//	validator := authlib.NewTokenValidator(jwkCache,
+//	    jwt.WithIssuer("https://auth.example.com"),
+//	    jwt.WithAudience("your-app"),
+//	)
+//	
+//	// Validate a token
+//	token, claims, err := validator.ValidateToken(context.Background(), "your-jwt-token")
 package authlib
 
 import (
@@ -14,10 +42,11 @@ import (
 )
 
 // ErrJWKFetch represents an error that occurs during JWK (JSON Web Key) fetching operations.
-// It includes both a descriptive message and the underlying cause of the error.
+// It provides both a descriptive message and the underlying cause of the error,
+// allowing for detailed error handling and logging.
 type ErrJWKFetch struct {
-	Message string
-	Cause   error
+	Message string // Human-readable error description
+	Cause   error  // The underlying error that caused the failure
 }
 
 func (e *ErrJWKFetch) Error() string {
@@ -28,10 +57,11 @@ func (e *ErrJWKFetch) Error() string {
 }
 
 // ErrTokenValidation represents an error that occurs during JWT token validation.
-// It includes both a descriptive message and the underlying cause of the error.
+// It provides detailed information about validation failures, including specific
+// validation rules that failed (e.g., expired token, invalid signature, wrong issuer).
 type ErrTokenValidation struct {
-	Message string
-	Cause   error
+	Message string // Human-readable error description
+	Cause   error  // The underlying error that caused the validation failure
 }
 
 func (e *ErrTokenValidation) Error() string {
@@ -42,40 +72,71 @@ func (e *ErrTokenValidation) Error() string {
 }
 
 // JWKMetricsHook defines an interface for monitoring JWK operations.
-// Implementations can track JWK fetches, cache hits, and cache misses.
+// Implementations can track various JWK-related events for monitoring,
+// alerting, and performance analysis purposes.
 type JWKMetricsHook interface {
-	// OnJWKFetch is called after a JWK fetch attempt with the duration and any error
+	// OnJWKFetch is called after a JWK fetch attempt, providing the operation
+	// duration and any error that occurred. This can be used to track latency
+	// and error rates for JWK fetching operations.
 	OnJWKFetch(duration time.Duration, err error)
-	// OnJWKCacheHit is called when a valid JWK Set is found in cache
+
+	// OnJWKCacheHit is called when a valid JWK Set is found in the cache.
+	// This can be used to monitor cache effectiveness and hit rates.
 	OnJWKCacheHit()
-	// OnJWKCacheMiss is called when a JWK Set needs to be fetched
+
+	// OnJWKCacheMiss is called when a JWK Set needs to be fetched from
+	// the authorization server. This can be used to monitor cache performance
+	// and identify potential issues with expiration settings.
 	OnJWKCacheMiss()
 }
 
 // KeyProvider defines the interface for JWK operations.
-// Implementations should handle JWK Set retrieval and caching.
+// This interface allows for different implementations of JWK Set management
+// while maintaining a consistent API for token validation.
 type KeyProvider interface {
-	// FetchKeys retrieves a JWK Set, either from cache or by fetching from the JWKS endpoint
+	// FetchKeys retrieves a JWK Set, either from cache or by fetching from the JWKS endpoint.
+	// The implementation should handle caching, refresh, and error recovery strategies.
+	//
+	// The context parameter can be used to cancel long-running operations
+	// or set timeouts for key retrieval.
 	FetchKeys(ctx context.Context) (jwk.Set, error)
 }
 
 // JWKCache implements KeyProvider interface and handles caching of JWK Sets.
-// It automatically refreshes expired JWK Sets and implements retry logic for JWK fetching.
+// It provides automatic refresh of expired keys and implements retry logic
+// for resilient key fetching. JWKCache is safe for concurrent use.
 type JWKCache struct {
-	jwkSet     jwk.Set        // The current JWK Set
-	expiresAt  time.Time      // Expiration time of the current JWK Set
-	config     JWKConfig      // JWK configuration settings
-	httpClient *http.Client   // HTTP client for making requests
-	metrics    JWKMetricsHook // Optional metrics collection
-	retryConf  RetryConfig    // Retry behavior configuration
+	// The current JWK Set
+	jwkSet jwk.Set
+
+	// Expiration time of the current JWK Set
+	expiresAt time.Time
+
+	// JWK configuration settings
+	config JWKConfig
+
+	// HTTP client for making requests
+	httpClient *http.Client
+
+	// Optional metrics collection
+	metrics JWKMetricsHook
+
+	// Retry behavior configuration
+	retryConf RetryConfig
 }
 
 // JWKConfig contains configuration for JWK fetching and validation.
-// It includes all necessary parameters for JWK Set endpoint access.
+// It includes all necessary parameters for JWK Set endpoint access and caching behavior.
 type JWKConfig struct {
-	JWKSURL        string            // URL to fetch JWK Set from
-	Headers        map[string]string // Additional headers for JWK request
-	ExpirationTime time.Duration     // How long to cache the JWK Set
+	// JWKSURL is the URL of the JWKS (JSON Web Key Set) endpoint
+	JWKSURL string
+
+	// Headers contains additional headers to include in JWK requests
+	Headers map[string]string
+
+	// ExpirationTime specifies how long to cache the JWK Set
+	// If not set, defaults to 24 hours
+	ExpirationTime time.Duration
 }
 
 // NewJWKCache creates a new JWKCache instance.
@@ -198,13 +259,30 @@ func (cache *JWKCache) fetchJWKSet(ctx context.Context) (jwk.Set, error) {
 }
 
 // TokenValidator handles JWT validation using JWK Sets.
-// It supports various validation options and automatic key rotation.
+// It supports various validation options and automatic key rotation through
+// its KeyProvider implementation. The validator is safe for concurrent use.
 type TokenValidator struct {
-	keyProvider KeyProvider          // Provider for JWK Sets
-	options     []jwt.ValidateOption // JWT validation options
+	// Provider for JWK Sets, handles key fetching and rotation
+	keyProvider KeyProvider
+
+	// JWT validation options (e.g., issuer, audience, time validation)
+	options []jwt.ValidateOption
 }
 
 // NewTokenValidator creates a new TokenValidator instance.
+// It accepts a KeyProvider for JWK management and optional JWT validation options.
+//
+// Common validation options include:
+//   - jwt.WithIssuer("https://issuer")
+//   - jwt.WithAudience("audience")
+//   - jwt.WithTime(time.Now())
+//
+// Example:
+//
+//	validator := NewTokenValidator(jwkCache,
+//	    jwt.WithIssuer("https://auth.example.com"),
+//	    jwt.WithAudience("your-app"),
+//	)
 func NewTokenValidator(keyProvider KeyProvider, options ...jwt.ValidateOption) *TokenValidator {
 	return &TokenValidator{
 		keyProvider: keyProvider,
@@ -213,6 +291,34 @@ func NewTokenValidator(keyProvider KeyProvider, options ...jwt.ValidateOption) *
 }
 
 // ValidateToken verifies the JWT with the fetched JWK and returns the token and claims.
+// It performs complete token validation including:
+//   - Signature verification using JWK Set
+//   - Token parsing and format validation
+//   - Claims validation (exp, iat, nbf, iss, aud, etc.)
+//
+// Parameters:
+//   - ctx: Context for cancellation and timeout control
+//   - tokenString: The JWT token string to validate
+//
+// Returns:
+//   - jwt.Token: The parsed and validated token
+//   - map[string]interface{}: The token's claims
+//   - error: Any validation error that occurred
+//
+// Security Considerations:
+//   - Always verify the token signature before using claims
+//   - Use appropriate validation options (issuer, audience, etc.)
+//   - Consider token expiration and clock skew
+//
+// Example:
+//
+//	token, claims, err := validator.ValidateToken(ctx, "eyJhbGciOiJSUzI1...")
+//	if err != nil {
+//	    log.Fatal(err)
+//	}
+//	if sub, ok := claims["sub"].(string); ok {
+//	    fmt.Printf("Token subject: %s\n", sub)
+//	}
 func (v *TokenValidator) ValidateToken(ctx context.Context, tokenString string) (jwt.Token, map[string]interface{}, error) {
 	jwkSet, err := v.keyProvider.FetchKeys(ctx)
 	if err != nil {

@@ -1,6 +1,33 @@
 // Package authlib provides OAuth2 token management and JWT validation functionality.
-// It implements client credentials flow for OAuth2 authentication and includes
-// caching mechanisms for both access tokens and JWK Sets.
+// It implements the OAuth2 client credentials flow for service-to-service authentication
+// and includes efficient caching mechanisms for both access tokens and JWK Sets.
+//
+// Key Features:
+//   - OAuth2 client credentials flow implementation
+//   - Automatic token refresh and caching
+//   - JWT token validation and parsing
+//   - Configurable retry mechanism
+//   - Extensible metrics collection
+//   - Context-aware operations
+//
+// Example Usage:
+//
+//	config := authlib.OAuthConfig{
+//	    ClientID:     "your-client-id",
+//	    ClientSecret: "your-client-secret",
+//	    TokenURL:     "https://auth.example.com/token",
+//	}
+//	
+//	cache := authlib.NewTokenCache(config)
+//	
+//	// Optional: Configure custom retry behavior
+//	cache.SetRetryConfig(authlib.RetryConfig{
+//	    MaxAttempts: 3,
+//	    WaitTime:    time.Second,
+//	})
+//	
+//	// Get a token (automatically handles caching and refresh)
+//	token, err := cache.GetToken(context.Background())
 package authlib
 
 import (
@@ -17,10 +44,11 @@ import (
 )
 
 // ErrTokenFetch represents an error that occurs during token fetching operations.
-// It includes both a descriptive message and the underlying cause of the error.
+// It provides both a descriptive message and the underlying cause of the error,
+// allowing for detailed error handling and logging.
 type ErrTokenFetch struct {
-	Message string
-	Cause   error
+	Message string // Human-readable error description
+	Cause   error  // The underlying error that caused the failure
 }
 
 func (e *ErrTokenFetch) Error() string {
@@ -31,50 +59,89 @@ func (e *ErrTokenFetch) Error() string {
 }
 
 // MetricsHook defines an interface for monitoring token operations.
-// Implementations can track token fetches, cache hits, and cache misses.
+// Implementations can track various token-related events for monitoring,
+// alerting, and performance analysis purposes.
 type MetricsHook interface {
-	// OnTokenFetch is called after a token fetch attempt with the duration and any error
+	// OnTokenFetch is called after a token fetch attempt, providing the operation
+	// duration and any error that occurred. This can be used to track latency
+	// and error rates for token fetching operations.
 	OnTokenFetch(duration time.Duration, err error)
-	// OnCacheHit is called when a valid token is found in cache
+
+	// OnCacheHit is called when a valid token is found in the cache.
+	// This can be used to monitor cache effectiveness and hit rates.
 	OnCacheHit()
-	// OnCacheMiss is called when a token needs to be fetched
+
+	// OnCacheMiss is called when a token needs to be fetched from the
+	// authorization server. This can be used to monitor cache performance
+	// and identify potential issues with token expiration settings.
 	OnCacheMiss()
 }
 
 // RetryConfig defines parameters for retry behavior during token fetching.
+// It allows customization of the retry mechanism to handle temporary failures
+// and network issues gracefully.
 type RetryConfig struct {
-	// MaxAttempts is the maximum number of retry attempts
+	// MaxAttempts is the maximum number of retry attempts before giving up.
+	// A value of 1 means no retries (only the initial attempt).
 	MaxAttempts int
-	// WaitTime is the duration to wait between retry attempts
+
+	// WaitTime is the duration to wait between retry attempts.
+	// This helps prevent overwhelming the authorization server during issues.
 	WaitTime time.Duration
 }
 
 // TokenProvider defines the interface for token operations.
-// Implementations should handle token retrieval and caching.
+// This interface allows for different implementations of token management
+// while maintaining a consistent API for token consumers.
 type TokenProvider interface {
-	// GetToken retrieves a valid OAuth token, either from cache or by fetching a new one
+	// GetToken retrieves a valid OAuth token, either from cache or by fetching a new one.
+	// It handles token expiration and refresh automatically.
+	//
+	// The context parameter can be used to cancel long-running operations
+	// or set timeouts for token retrieval.
 	GetToken(ctx context.Context) (string, error)
 }
 
 // TokenCache implements TokenProvider interface and handles caching of OAuth tokens.
-// It automatically refreshes expired tokens and implements retry logic for token fetching.
+// It provides automatic token refresh, retry logic, and metrics collection.
+// TokenCache is safe for concurrent use by multiple goroutines.
 type TokenCache struct {
-	Token      string      // The current OAuth token
-	ExpiresAt  time.Time   // Expiration time of the current token
-	Config     OAuthConfig // OAuth configuration settings
-	RetryConf  RetryConfig // Retry behavior configuration
-	Metrics    MetricsHook // Optional metrics collection
+	// Token holds the current OAuth token
+	Token string
+
+	// ExpiresAt tracks the token's expiration time
+	ExpiresAt time.Time
+
+	// Config contains the OAuth configuration settings
+	Config OAuthConfig
+
+	// RetryConf specifies the retry behavior for token fetching
+	RetryConf RetryConfig
+
+	// Metrics provides hooks for monitoring token operations
+	Metrics MetricsHook
+
+	// httpClient is used for making HTTP requests to the token endpoint
 	httpClient *http.Client
 }
 
 // OAuthConfig contains the configuration for OAuth client credentials flow.
 // It includes all necessary parameters for token endpoint authentication.
 type OAuthConfig struct {
-	ClientID     string            // OAuth client identifier
-	ClientSecret string            // OAuth client secret
-	TokenURL     string            // Full URL to the token endpoint
-	Headers      map[string]string // Additional headers for token request
-	GrantType    string            // OAuth grant type, defaults to "client_credentials"
+	// ClientID is the OAuth client identifier
+	ClientID string
+
+	// ClientSecret is the OAuth client secret
+	ClientSecret string
+
+	// TokenURL is the full URL to the token endpoint
+	TokenURL string
+
+	// Headers contains additional headers to include in token requests
+	Headers map[string]string
+
+	// GrantType specifies the OAuth grant type (defaults to "client_credentials")
+	GrantType string
 }
 
 // NewTokenCache creates a new TokenCache instance.
@@ -108,6 +175,16 @@ func (cache *TokenCache) SetRetryConfig(config RetryConfig) {
 }
 
 // GetToken handles getting, validating, and caching the JWT token.
+// It implements a cache-first strategy, only fetching a new token when
+// the cached token is expired or invalid.
+//
+// The function is thread-safe and can be called concurrently. It uses
+// the provided context for cancellation and timeout control.
+//
+// If metrics collection is enabled, it will report:
+//   - Cache hits/misses
+//   - Token fetch duration
+//   - Token fetch errors
 func (cache *TokenCache) GetToken(ctx context.Context) (string, error) {
 	// If the token is already in cache and it's not expired, return it
 	if cache.Token != "" && time.Now().Before(cache.ExpiresAt) {
@@ -152,6 +229,8 @@ func (cache *TokenCache) GetToken(ctx context.Context) (string, error) {
 }
 
 // fetchNewTokenWithRetry implements retry logic for token fetching.
+// It attempts to fetch a new token up to MaxAttempts times, waiting
+// WaitTime between attempts. The operation can be cancelled via context.
 func (cache *TokenCache) fetchNewTokenWithRetry(ctx context.Context) (map[string]interface{}, error) {
 	var lastErr error
 	for attempt := 0; attempt < cache.RetryConf.MaxAttempts; attempt++ {
@@ -174,6 +253,15 @@ func (cache *TokenCache) fetchNewTokenWithRetry(ctx context.Context) (map[string
 }
 
 // fetchNewToken retrieves a new token from the authorization server.
+// It handles the HTTP request to the token endpoint, including proper
+// header setting and error handling.
+//
+// The function expects a JSON response containing an "access_token" field.
+// It will return an error if:
+//   - The HTTP request fails
+//   - The response status is not 200 OK
+//   - The response cannot be decoded as JSON
+//   - The response doesn't contain an access_token field
 func (cache *TokenCache) fetchNewToken(ctx context.Context) (map[string]interface{}, error) {
 	config := cache.Config
 	data := fmt.Sprintf("grant_type=%s&client_id=%s&client_secret=%s",

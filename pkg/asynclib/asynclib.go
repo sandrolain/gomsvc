@@ -128,13 +128,13 @@ type Workers[T any, R any] struct {
 //   - fn: The function that each worker will use to process inputs
 //
 // Returns:
-//   - Workers[T, R]: A Workers instance that can be used to send inputs and receive results
-func StartWorkers[T any, R any](workersNum int, fn func(T) (R, error)) (res Workers[T, R]) {
+//   - *Workers[T, R]: A pointer to a Workers instance that can be used to send inputs and receive results
+func StartWorkers[T any, R any](workersNum int, fn func(T) (R, error)) *Workers[T, R] {
 	inputs := make(chan T, workersNum)
 	results := make(chan WorketResult[T, R], workersNum)
 	done := make(chan struct{})
 
-	workers := Workers[T, R]{
+	workers := &Workers[T, R]{
 		Input:   inputs,
 		Results: results,
 		done:    done,

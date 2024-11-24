@@ -14,20 +14,15 @@ import (
 	"github.com/sandrolain/gomsvc/pkg/certlib"
 	"github.com/sandrolain/gomsvc/pkg/svc"
 	"google.golang.org/grpc"
+	"google.golang.org/grpc/credentials"
 	"google.golang.org/grpc/reflection"
 )
 
 type EnvServerConfig struct {
-	Port int    `env:"GRPC_PORT" validate:"required,numeric"`
-	Cert string `env:"GRPC_CERT" validate:"omitempty,filepath"`
-	Key  string `env:"GRPC_KEY" validate:"omitempty,filepath"`
-	CA   string `env:"GRPC_CA" validate:"omitempty,filepath"`
-}
-
-type Credentials struct {
-	CertPath string `validate:"required,filepath"`
-	KeyPath  string `validate:"required,filepath"`
-	CAPath   string `validate:"required,filepath"`
+	Port     int    `env:"GRPC_PORT" validate:"required,numeric"`
+	CertFile string `env:"GRPC_CERT" validate:"omitempty,filepath"`
+	KeyFile  string `env:"GRPC_KEY" validate:"omitempty,filepath"`
+	CAFile   string `env:"GRPC_CA" validate:"omitempty,filepath"`
 }
 
 type ServerOptions struct {
@@ -35,21 +30,21 @@ type ServerOptions struct {
 	ServiceDesc *grpc.ServiceDesc `validate:"required"`
 	Handler     interface{}       `validate:"required"`
 	Logger      *slog.Logger
-	Credentials *Credentials `validate:"omitempty"`
+	TLSConfig   *certlib.ServerTLSConfigFiles `validate:"omitempty"`
 }
 
 func ServerOptionsFromEnvConfig(cfg EnvServerConfig) ServerOptions {
-	var creds *Credentials
-	if cfg.Cert != "" {
-		creds = &Credentials{
-			CertPath: cfg.Cert,
-			KeyPath:  cfg.Key,
-			CAPath:   cfg.CA,
+	var creds *certlib.ServerTLSConfigFiles
+	if cfg.CertFile != "" {
+		creds = &certlib.ServerTLSConfigFiles{
+			CertFile: cfg.CertFile,
+			KeyFile:  cfg.KeyFile,
+			CAFile:   cfg.CAFile,
 		}
 	}
 	return ServerOptions{
-		Port:        cfg.Port,
-		Credentials: creds,
+		Port:      cfg.Port,
+		TLSConfig: creds,
 	}
 }
 
@@ -81,16 +76,14 @@ func NewGrpcServer(opts ServerOptions) (*GrpcServer, error) {
 	}
 
 	serverOptions := []grpc.ServerOption{}
-	if opts.Credentials != nil {
-		cred, err := certlib.LoadServerTLSCredentials(certlib.ServerTLSConfigArgs[string]{
-			Cert: opts.Credentials.CertPath,
-			Key:  opts.Credentials.KeyPath,
-			CA:   opts.Credentials.CAPath,
-		})
+	if opts.TLSConfig != nil {
+		cred, err := certlib.LoadServerTLSConfig(*opts.TLSConfig)
 		if err != nil {
 			return nil, fmt.Errorf("failed to load credentials: %w", err)
 		}
-		serverOptions = append(serverOptions, grpc.Creds(cred))
+		serverOptions = append(serverOptions, grpc.Creds(
+			credentials.NewTLS(cred),
+		))
 	}
 
 	protovalidator, e := protovalidate.New()

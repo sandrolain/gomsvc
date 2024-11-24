@@ -8,12 +8,13 @@ import (
 	"github.com/sandrolain/gomsvc/pkg/certlib"
 	"github.com/sandrolain/gomsvc/pkg/svc"
 	"google.golang.org/grpc"
+	"google.golang.org/grpc/credentials"
 )
 
 type ClientOptions struct {
 	Url         string `validate:"required,url"`
 	Logger      *slog.Logger
-	Credentials *Credentials
+	Credentials *certlib.ClientTLSConfigFiles
 	ServerName  string // Added for TLS verification
 }
 
@@ -26,19 +27,16 @@ func CreateClient[T any](new func(grpc.ClientConnInterface) T, opts ClientOption
 			return
 		}
 
-		creds, e := certlib.LoadClientTLSCredentials(certlib.ClientTLSConfigArgs[string]{
-			Cert:       opts.Credentials.CertPath,
-			Key:        opts.Credentials.KeyPath,
-			CA:         opts.Credentials.CAPath,
-			ServerName: opts.ServerName,
-		})
+		creds, e := certlib.LoadClientTLSConfig(*opts.Credentials)
 
 		if e != nil {
 			err = fmt.Errorf("failed to load credentials: %w", e)
 			return
 		}
 
-		dialOptions = append(dialOptions, grpc.WithTransportCredentials(creds))
+		dialOptions = append(dialOptions, grpc.WithTransportCredentials(
+			credentials.NewTLS(creds),
+		))
 	}
 
 	logger := opts.Logger
@@ -59,7 +57,7 @@ func CreateClient[T any](new func(grpc.ClientConnInterface) T, opts ClientOption
 		),
 	)
 
-	conn, err := grpc.Dial(opts.Url, dialOptions...)
+	conn, err := grpc.NewClient(opts.Url, dialOptions...)
 	if err != nil {
 		err = fmt.Errorf("fail to dial: %w", err)
 		return

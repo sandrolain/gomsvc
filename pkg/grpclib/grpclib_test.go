@@ -8,9 +8,11 @@ import (
 	"testing"
 	"time"
 
+	"github.com/sandrolain/gomsvc/pkg/certlib"
 	g "github.com/sandrolain/gomsvc/pkg/grpclib/test"
 	"github.com/sandrolain/gomsvc/pkg/netlib"
 	"google.golang.org/grpc"
+	"google.golang.org/grpc/credentials/insecure"
 )
 
 type testServer struct {
@@ -42,10 +44,10 @@ func TestNewGrpcServer_FailToLoadCredentials(t *testing.T) {
 		Port:        8080,
 		ServiceDesc: &g.UnitTestService_ServiceDesc,
 		Handler:     &testServer{},
-		Credentials: &Credentials{
-			CertPath: "non-existent-cert",
-			KeyPath:  "non-existent-key",
-			CAPath:   "non-existent-ca",
+		TLSConfig: &certlib.ServerTLSConfigFiles{
+			CertFile: "non-existent-cert",
+			KeyFile:  "non-existent-key",
+			CAFile:   "non-existent-ca",
 		},
 		Logger: slog.New(slog.NewTextHandler(os.Stdout, &slog.HandlerOptions{AddSource: true})),
 	}
@@ -75,12 +77,14 @@ func TestGrpcServer_Start(t *testing.T) {
 	}
 
 	go func() {
-		srv.Start()
+		_ = srv.Start()
 	}()
 
 	time.Sleep(500 * time.Millisecond)
 
-	conn, err := grpc.Dial(fmt.Sprintf(":%v", opts.Port), grpc.WithInsecure())
+	conn, err := grpc.NewClient(fmt.Sprintf(":%v", opts.Port), grpc.WithTransportCredentials(
+		insecure.NewCredentials(),
+	))
 	if err != nil {
 		t.Fatalf("grpc.Dial returned error: %v", err)
 	}

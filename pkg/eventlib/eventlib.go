@@ -3,9 +3,13 @@ package eventlib
 import (
 	"context"
 	"fmt"
+	"log/slog"
 	"sync"
 )
 
+// NewEmitter creates a new event emitter with the specified context and channel buffer size.
+// If size is 0 or negative, an unbuffered channel is created.
+// The returned emitter must be cleaned up by calling End() when no longer needed.
 func NewEmitter[T any](ctx context.Context, size int) *Emitter[T] {
 	var ch chan T
 	if size > 0 {
@@ -27,7 +31,11 @@ func NewEmitter[T any](ctx context.Context, size int) *Emitter[T] {
 	return &emitter
 }
 
+// OnEventFn is a function type that handles events of type T.
+// It returns an error if the event handling fails.
 type OnEventFn[T any] func(T) error
+
+// OnErrorFn is a function type that handles errors that occur during event processing.
 type OnErrorFn func(error)
 
 type emitterFns[T any] struct {
@@ -35,6 +43,8 @@ type emitterFns[T any] struct {
 	onError OnErrorFn
 }
 
+// Emitter is a generic event emitter that supports type-safe event handling.
+// It provides concurrent-safe operations for emitting and handling events of type T.
 type Emitter[T any] struct {
 	ch     chan T
 	fns    []emitterFns[T]
@@ -43,6 +53,11 @@ type Emitter[T any] struct {
 	mu     *sync.RWMutex
 }
 
+// Subscribe adds a new event handler to the emitter.
+// The onEvent function is called for each emitted event.
+// The onError function is called when an error occurs during event handling.
+// If onEvent is nil, the subscription is ignored.
+// Multiple handlers can be subscribed to the same emitter.
 func (e *Emitter[T]) Subscribe(onEvent OnEventFn[T], onError OnErrorFn) {
 	if onEvent == nil {
 		return // Don't add nil handlers
@@ -55,6 +70,9 @@ func (e *Emitter[T]) Subscribe(onEvent OnEventFn[T], onError OnErrorFn) {
 	e.mu.Unlock()
 }
 
+// Emit sends a new event to all subscribed handlers.
+// If the emitter's context is cancelled or the channel is full,
+// the event will be dropped.
 func (e *Emitter[T]) Emit(data T) {
 	select {
 	case e.ch <- data:
@@ -63,6 +81,9 @@ func (e *Emitter[T]) Emit(data T) {
 	}
 }
 
+// GetEmitter returns a function that can be used to emit events.
+// This is useful when you want to pass the emit capability without
+// exposing the entire Emitter interface.
 func (e *Emitter[T]) GetEmitter() func(T) {
 	return func(data T) {
 		e.Emit(data)
@@ -72,7 +93,7 @@ func (e *Emitter[T]) GetEmitter() func(T) {
 func (e *Emitter[T]) listen() {
 	defer func() {
 		if r := recover(); r != nil {
-			// Log or handle panic if needed
+			slog.Default().Error("panic recovered", "panic", r)
 		}
 	}()
 

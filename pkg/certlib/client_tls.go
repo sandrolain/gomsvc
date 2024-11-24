@@ -10,13 +10,21 @@ import (
 	"google.golang.org/grpc/credentials"
 )
 
+// ClientTLSConfigArgs holds the configuration parameters for creating client TLS credentials.
+// Type parameter T can be either []byte for raw certificate data or string for file paths.
 type ClientTLSConfigArgs[T any] struct {
-	Cert       T
-	Key        T
-	CA         T
+	// Cert is the client's certificate (PEM encoded)
+	Cert T
+	// Key is the client's private key (PEM encoded)
+	Key T
+	// CA is the certificate authority's certificate (PEM encoded)
+	CA T
+	// ServerName is the expected server name for verification
 	ServerName string
 }
 
+// CreateClientTLSCredentials creates gRPC transport credentials from raw certificate data.
+// The certificates and key should be PEM encoded.
 func CreateClientTLSCredentials(args ClientTLSConfigArgs[[]byte]) (cred credentials.TransportCredentials, err error) {
 	if args.ServerName == "" {
 		return nil, errors.New("ServerName is required")
@@ -39,6 +47,8 @@ func CreateClientTLSCredentials(args ClientTLSConfigArgs[[]byte]) (cred credenti
 	return
 }
 
+// LoadClientTLSCredentials creates gRPC transport credentials by loading certificates from files.
+// The files should contain PEM encoded certificates and key.
 func LoadClientTLSCredentials(args ClientTLSConfigArgs[string]) (cred credentials.TransportCredentials, err error) {
 	if args.ServerName == "" {
 		err = errors.New("ServerName is required")

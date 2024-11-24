@@ -1,3 +1,6 @@
+// Package certlib provides functionality for generating and managing X.509 certificates
+// and their corresponding private keys. It supports creating different types of certificates
+// including root CAs, intermediate CAs, server certificates, and client certificates.
 package certlib
 
 import (
@@ -13,14 +16,19 @@ import (
 	"time"
 )
 
+// MinKeySize defines the minimum allowed RSA key size in bits
 const MinKeySize = 2048
+
+// DefaultKeySize defines the default RSA key size in bits used for certificate generation
 const DefaultKeySize = 2048
 
+// CertKey holds a certificate and its corresponding private key
 type CertKey struct {
 	Cert *x509.Certificate
 	Key  *rsa.PrivateKey
 }
 
+// TLSCertificate converts the certificate and key pair into a tls.Certificate
 func (c *CertKey) TLSCertificate() *tls.Certificate {
 	return &tls.Certificate{
 		Certificate: [][]byte{c.Cert.Raw},
@@ -28,33 +36,52 @@ func (c *CertKey) TLSCertificate() *tls.Certificate {
 	}
 }
 
+// PublicKey returns the public key portion of the private key
 func (c *CertKey) PublicKey() *rsa.PublicKey {
 	return &c.Key.PublicKey
 }
 
+// CertificateType represents the type of certificate to be generated
 type CertificateType int
 
 const (
+	// CertificateTypeRootCA represents a root Certificate Authority
 	CertificateTypeRootCA CertificateType = iota
+	// CertificateTypeIntermediateCA represents an intermediate Certificate Authority
 	CertificateTypeIntermediateCA
+	// CertificateTypeServer represents a server certificate
 	CertificateTypeServer
+	// CertificateTypeClient represents a client certificate
 	CertificateTypeClient
 )
 
+// CertificateArgs contains the parameters needed to generate a certificate
 type CertificateArgs struct {
-	Serial         *big.Int
-	Subject        pkix.Name
-	Extensions     []pkix.Extension
-	Issuer         CertKey
-	NotBefore      time.Time
-	Duration       time.Duration
+	// Serial is the certificate's serial number
+	Serial *big.Int
+	// Subject contains the certificate subject information
+	Subject pkix.Name
+	// Extensions contains additional X.509 extensions
+	Extensions []pkix.Extension
+	// Issuer is the certificate and key that will sign this certificate
+	Issuer CertKey
+	// NotBefore is the time when the certificate becomes valid
+	NotBefore time.Time
+	// Duration specifies how long the certificate will be valid
+	Duration time.Duration
+	// EmailAddresses contains email addresses to include in the certificate
 	EmailAddresses []string
-	DNSNames       []string
-	IPAddresses    []net.IP
-	KeySize        int
+	// DNSNames contains DNS names to include in the certificate
+	DNSNames []string
+	// IPAddresses contains IP addresses to include in the certificate
+	IPAddresses []net.IP
+	// KeySize specifies the size of the RSA key to generate
+	KeySize int
 }
 
+// validateSubject checks if the subject information is valid for the given certificate type
 func validateSubject(subject pkix.Name, certType CertificateType) error {
+	// Validate subject fields based on certificate type
 	if subject.CommonName == "" {
 		return errors.New("CommonName is required")
 	}
@@ -79,7 +106,9 @@ func validateSubject(subject pkix.Name, certType CertificateType) error {
 	return nil
 }
 
+// validateServerIdentity checks if the server identity information is valid
 func validateServerIdentity(args CertificateArgs) error {
+	// Validate server identity fields
 	if len(args.DNSNames) == 0 && len(args.IPAddresses) == 0 {
 		return errors.New("at least one DNS name or IP address is required for server certificates")
 	}
@@ -107,6 +136,7 @@ func validateServerIdentity(args CertificateArgs) error {
 	return nil
 }
 
+// GenerateCertificate generates a certificate and its corresponding private key based on the given parameters
 func GenerateCertificate(certType CertificateType, args CertificateArgs) (res CertKey, err error) {
 	// Validate subject fields
 	if err = validateSubject(args.Subject, certType); err != nil {
@@ -214,13 +244,16 @@ func GenerateCertificate(certType CertificateType, args CertificateArgs) (res Ce
 	return
 }
 
+// generateKey generates a new RSA key pair with the given key size
 func generateKey(keySize int) (*rsa.PrivateKey, error) {
+	// Generate a new RSA key pair with the given key size
 	if keySize == 0 {
 		keySize = DefaultKeySize
 	}
 
 	if keySize < MinKeySize {
-		return nil, fmt.Errorf("key size must be at least %d", MinKeySize)
+		return nil, fmt.Errorf("key size must be at least %d bits", MinKeySize)
 	}
+
 	return rsa.GenerateKey(rand.Reader, keySize)
 }

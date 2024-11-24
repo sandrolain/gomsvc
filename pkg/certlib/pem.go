@@ -18,6 +18,8 @@ const (
 	pubRsaPemType = "RSA PUBLIC KEY"
 )
 
+// EncodeCertificateToPEM encodes an X.509 certificate to PEM format
+// Returns the PEM-encoded certificate as a byte slice
 func EncodeCertificateToPEM(cert *x509.Certificate) (certPEMBytes []byte, err error) {
 	return pem.EncodeToMemory(&pem.Block{
 		Type:  crtPemType,
@@ -25,6 +27,8 @@ func EncodeCertificateToPEM(cert *x509.Certificate) (certPEMBytes []byte, err er
 	}), nil
 }
 
+// EncodePrivateKeyToPEM encodes an RSA private key to PEM format using PKCS8
+// Returns the PEM-encoded private key as a byte slice
 func EncodePrivateKeyToPEM(key *rsa.PrivateKey) (keyPEMBytes []byte, err error) {
 	data, err := x509.MarshalPKCS8PrivateKey(key)
 	if err != nil {
@@ -37,6 +41,8 @@ func EncodePrivateKeyToPEM(key *rsa.PrivateKey) (keyPEMBytes []byte, err error) 
 	}), nil
 }
 
+// EncodePublicKeyToPEM encodes an RSA public key to PEM format using PKIX
+// Returns the PEM-encoded public key as a byte slice
 func EncodePublicKeyToPEM(key *rsa.PublicKey) (keyPEMBytes []byte, err error) {
 	data, err := x509.MarshalPKIXPublicKey(key)
 	if err != nil {
@@ -49,6 +55,8 @@ func EncodePublicKeyToPEM(key *rsa.PublicKey) (keyPEMBytes []byte, err error) {
 	}), nil
 }
 
+// EncodeRSAPrivateKeyToPEM encodes an RSA private key to PEM format using PKCS1
+// Returns the PEM-encoded RSA private key as a byte slice
 func EncodeRSAPrivateKeyToPEM(key *rsa.PrivateKey) (keyPEMBytes []byte, err error) {
 	return pem.EncodeToMemory(&pem.Block{
 		Type:  prvRsaPemType,
@@ -56,6 +64,8 @@ func EncodeRSAPrivateKeyToPEM(key *rsa.PrivateKey) (keyPEMBytes []byte, err erro
 	}), nil
 }
 
+// EncodeRSAPublicKeyToPEM encodes an RSA public key to PEM format using PKCS1
+// Returns the PEM-encoded RSA public key as a byte slice
 func EncodeRSAPublicKeyToPEM(key *rsa.PublicKey) (keyPEMBytes []byte, err error) {
 	return pem.EncodeToMemory(&pem.Block{
 		Type:  pubRsaPemType,
@@ -63,6 +73,8 @@ func EncodeRSAPublicKeyToPEM(key *rsa.PublicKey) (keyPEMBytes []byte, err error)
 	}), nil
 }
 
+// ParseCertificateFromPEM decodes a PEM-encoded X.509 certificate
+// Returns the parsed certificate or an error if the PEM block is invalid or parsing fails
 func ParseCertificateFromPEM(certPEMBytes []byte) (cert *x509.Certificate, err error) {
 	block, _ := pem.Decode(certPEMBytes)
 	if block == nil {
@@ -77,6 +89,8 @@ func ParseCertificateFromPEM(certPEMBytes []byte) (cert *x509.Certificate, err e
 	return
 }
 
+// ParsePrivateKeyFromPEM decodes a PEM-encoded private key in either PKCS1 or PKCS8 format
+// Returns the parsed RSA private key or an error if the PEM block is invalid or parsing fails
 func ParsePrivateKeyFromPEM(keyPEMBytes []byte) (key *rsa.PrivateKey, err error) {
 	block, _ := pem.Decode(keyPEMBytes)
 	if block == nil {
@@ -108,6 +122,8 @@ func ParsePrivateKeyFromPEM(keyPEMBytes []byte) (key *rsa.PrivateKey, err error)
 	return
 }
 
+// validatePath checks if the given file path is valid and points to a regular file
+// Returns an error if the path is invalid, points to a directory, or the file doesn't exist
 func validatePath(path string) error {
 	// Clean the path to remove any . or .. components
 	cleanPath := filepath.Clean(path)
@@ -130,6 +146,8 @@ func validatePath(path string) error {
 	return nil
 }
 
+// ParseCertificateFromFile reads and parses an X.509 certificate from a PEM file
+// Returns the parsed certificate or an error if the file is invalid or parsing fails
 func ParseCertificateFromFile(path string) (cert *x509.Certificate, err error) {
 	if err = validatePath(path); err != nil {
 		return nil, err
@@ -143,6 +161,8 @@ func ParseCertificateFromFile(path string) (cert *x509.Certificate, err error) {
 	return ParseCertificateFromPEM(certPEMBytes)
 }
 
+// ParsePrivateKeyFromFile reads and parses an RSA private key from a PEM file
+// Returns the parsed private key or an error if the file is invalid or parsing fails
 func ParsePrivateKeyFromFile(path string) (key *rsa.PrivateKey, err error) {
 	if err = validatePath(path); err != nil {
 		return nil, err

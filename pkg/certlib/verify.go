@@ -7,14 +7,26 @@ import (
 	"time"
 )
 
+// VerifyCertificateArgs holds the parameters needed to verify a certificate.
 type VerifyCertificateArgs struct {
-	Type          CertificateType
-	Cert          *x509.Certificate
-	DNSName       string
+	// Type specifies the expected certificate type (server, client, CA)
+	Type CertificateType
+	// Cert is the certificate to verify
+	Cert *x509.Certificate
+	// DNSName is the expected DNS name for server certificates
+	DNSName string
+	// Intermediates is the list of intermediate CA certificates
 	Intermediates []*x509.Certificate
-	Roots         []*x509.Certificate
+	// Roots is the list of root CA certificates
+	Roots []*x509.Certificate
 }
 
+// VerifyCertificate performs comprehensive validation of a certificate.
+// It checks:
+// - Certificate validity period
+// - Certificate chain verification
+// - Certificate type-specific requirements (e.g., DNS names for server certificates)
+// - Certificate authority status for CA certificates
 func VerifyCertificate(args VerifyCertificateArgs) (err error) {
 	cert := args.Cert
 	if cert == nil {

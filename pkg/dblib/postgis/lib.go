@@ -17,8 +17,8 @@ func HexCoordsToPoint(hex string) (res string, err error) {
 	return
 }
 
-var latLngPoint = regexp.MustCompile("^\\s*POINT\\(\\s*(\\d+\\.\\d+)\\s+(\\d+\\.\\d+)\\s*\\)\\s*$")
-var latLngOnly = regexp.MustCompile("^\\s*(\\d+\\.\\d+)[\\s,]+(\\d+\\.\\d+)\\s*$")
+var latLngPoint = regexp.MustCompile(`^\s*POINT\s*\(\s*(\d+\.\d+)\s+(\d+\.\d+)\s*\)\s*$`)
+var latLngOnly = regexp.MustCompile(`^\s*(\d+\.\d+)[\s,]+(\d+\.\d+)\s*$`)
 
 func ValidatePoint(pnt string) (string, error) {
 	if latLngPoint.MatchString(pnt) {

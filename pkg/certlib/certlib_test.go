@@ -10,7 +10,7 @@ import (
 )
 
 func TestGenerateCA(t *testing.T) {
-	rootCA, err := GenerateBasicCA("Test Root CA", "Test Organization", "US", 365*24*time.Hour)
+	rootCA, err := generateBasicCA("Test Root CA", "Test Organization", "US", 365*24*time.Hour)
 	if err != nil {
 		t.Fatal(err.Error())
 	}
@@ -26,14 +26,14 @@ func TestGenerateCA(t *testing.T) {
 			t.Fatal(err.Error())
 		}
 
-		os.WriteFile("./root_ca_cert.pem", certBytes, 0644)
-		os.WriteFile("./root_ca_key.pem", keyBytes, 0644)
+		_ = os.WriteFile("./root_ca_cert.pem", certBytes, 0644)
+		_ = os.WriteFile("./root_ca_key.pem", keyBytes, 0644)
 
 		defer os.Remove("./root_ca_cert.pem")
 		defer os.Remove("./root_ca_key.pem")
 	})
 
-	ca, err := GenerateBasicIntermediateCA("Test Intermediate CA", "Test Organization", "US", rootCA, 365*24*time.Hour)
+	ca, err := generateBasicIntermediateCA("Test Intermediate CA", "Test Organization", "US", rootCA, 365*24*time.Hour)
 	if err != nil {
 		t.Fatal(err.Error())
 	}
@@ -56,11 +56,11 @@ func TestGenerateCA(t *testing.T) {
 			t.Fatal(err.Error())
 		}
 
-		os.WriteFile("./int_ca_cert.pem", certBytes, 0644)
-		os.WriteFile("./int_ca_key.pem", keyBytes, 0644)
+		_ = os.WriteFile("./int_ca_cert.pem", certBytes, 0644)
+		_ = os.WriteFile("./int_ca_key.pem", keyBytes, 0644)
 	})
 
-	client, err := GenerateBasicClientCert("Test Client", ca, 365*24*time.Hour)
+	client, err := generateBasicClientCert("Test Client", ca, 365*24*time.Hour)
 	if err != nil {
 		t.Fatal(err.Error())
 	}
@@ -76,11 +76,11 @@ func TestGenerateCA(t *testing.T) {
 			t.Fatal(err.Error())
 		}
 
-		os.WriteFile("./client_cert.pem", certBytes, 0644)
-		os.WriteFile("./client_key.pem", keyBytes, 0644)
+		_ = os.WriteFile("./client_cert.pem", certBytes, 0644)
+		_ = os.WriteFile("./client_key.pem", keyBytes, 0644)
 	})
 
-	server, err := GenerateBasicServerCert("Test Server", []string{"localhost"}, ca, 365*24*time.Hour)
+	server, err := generateBasicServerCert("Test Server", []string{"localhost"}, ca, 365*24*time.Hour)
 	if err != nil {
 		t.Fatal(err.Error())
 	}
@@ -96,8 +96,8 @@ func TestGenerateCA(t *testing.T) {
 			t.Fatal(err.Error())
 		}
 
-		os.WriteFile("./server_cert.pem", certBytes, 0644)
-		os.WriteFile("./server_key.pem", keyBytes, 0644)
+		_ = os.WriteFile("./server_cert.pem", certBytes, 0644)
+		_ = os.WriteFile("./server_key.pem", keyBytes, 0644)
 	})
 }
 
@@ -146,7 +146,7 @@ func TestCertificateErrors(t *testing.T) {
 
 	t.Run("Invalid Certificate Chain", func(t *testing.T) {
 		// Create a root CA first
-		rootCA, err := GenerateBasicCA("Test Root CA", "Test Org", "US", 24*time.Hour)
+		rootCA, err := generateBasicCA("Test Root CA", "Test Org", "US", 24*time.Hour)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -203,13 +203,13 @@ func TestCertificateErrors(t *testing.T) {
 	})
 
 	t.Run("Wrong Certificate Type Usage", func(t *testing.T) {
-		rootCA, err := GenerateBasicCA("Test Root CA", "Test Org", "US", 24*time.Hour)
+		rootCA, err := generateBasicCA("Test Root CA", "Test Org", "US", 24*time.Hour)
 		if err != nil {
 			t.Fatal(err)
 		}
 
 		// Create a server certificate
-		serverCert, err := GenerateBasicServerCert("Test Server", []string{"localhost"}, rootCA, 24*time.Hour)
+		serverCert, err := generateBasicServerCert("Test Server", []string{"localhost"}, rootCA, 24*time.Hour)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -228,7 +228,7 @@ func TestCertificateErrors(t *testing.T) {
 }
 
 func TestServerIdentityValidation(t *testing.T) {
-	rootCA, err := GenerateBasicCA("Test CA", "Test Org", "US", 24*time.Hour)
+	rootCA, err := generateBasicCA("Test CA", "Test Org", "US", 24*time.Hour)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -277,39 +277,39 @@ func TestServerIdentityValidation(t *testing.T) {
 
 func TestUtilityFunctions(t *testing.T) {
 	// Test basic CA creation
-	rootCA, err := GenerateBasicCA("Test CA", "Test Org", "US", 24*time.Hour)
+	rootCA, err := generateBasicCA("Test CA", "Test Org", "US", 24*time.Hour)
 	if err != nil {
 		t.Fatal(err)
 	}
 
 	// Test basic intermediate CA creation
-	intCA, err := GenerateBasicIntermediateCA("Test Int CA", "Test Org", "US", rootCA, 24*time.Hour)
+	intCA, err := generateBasicIntermediateCA("Test Int CA", "Test Org", "US", rootCA, 24*time.Hour)
 	if err != nil {
 		t.Fatal(err)
 	}
 
 	// Test basic server cert creation
-	serverCert, err := GenerateBasicServerCert("Test Server", []string{"localhost"}, intCA, 24*time.Hour)
+	serverCert, err := generateBasicServerCert("Test Server", []string{"localhost"}, intCA, 24*time.Hour)
 	if err != nil {
 		t.Fatal(err)
 	}
 
 	// Test basic client cert creation
-	clientCert, err := GenerateBasicClientCert("Test Client", intCA, 24*time.Hour)
+	clientCert, err := generateBasicClientCert("Test Client", intCA, 24*time.Hour)
 	if err != nil {
 		t.Fatal(err)
 	}
 
 	// Test cert pool creation
-	pool := CreateCertPool(rootCA.Cert, intCA.Cert)
+	pool := createCertPool(rootCA.Cert, intCA.Cert)
 	if pool == nil {
 		t.Error("Expected non-nil cert pool")
 	}
 
 	// Test TLS config creation
-	tlsConfig := CreateTLSConfig(serverCert, pool)
+	tlsConfig := createTLSConfig(serverCert, pool)
 	if tlsConfig == nil {
-		t.Error("Expected non-nil TLS config")
+		t.Fatal("Expected non-nil TLS config")
 	}
 	if len(tlsConfig.Certificates) != 1 {
 		t.Error("Expected 1 certificate in TLS config")

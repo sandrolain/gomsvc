@@ -32,7 +32,8 @@ func TestJWKCache(t *testing.T) {
 		keySet.Add(key)
 
 		// Serve the key set
-		json.NewEncoder(w).Encode(keySet)
+		enc := json.NewEncoder(w)
+		_ = enc.Encode(keySet)
 	}))
 	defer server.Close()
 

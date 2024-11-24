@@ -98,19 +98,19 @@ func applyInit(ctx context.Context, init *Init) (*resty.Request, error) {
 		return r, nil
 	}
 
-	if init.Headers != nil && len(init.Headers) > 0 {
+	if len(init.Headers) > 0 {
 		r.SetHeaders(init.Headers)
 	}
-	if init.Query != nil && len(init.Query) > 0 {
+	if len(init.Query) > 0 {
 		r.SetQueryParams(init.Query)
 	}
-	if init.Params != nil && len(init.Params) > 0 {
+	if len(init.Params) > 0 {
 		r.SetPathParams(init.Params)
 	}
-	if init.FormData != nil && len(init.FormData) > 0 {
+	if len(init.FormData) > 0 {
 		r.SetFormData(init.FormData)
 	}
-	if init.Files != nil && len(init.Files) > 0 {
+	if len(init.Files) > 0 {
 		r.SetFiles(init.Files)
 	}
 	if init.Body != nil {

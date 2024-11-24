@@ -19,8 +19,8 @@ func (e RouteError) Error() string {
 
 type ErrorFilterFunc func(RouteError) RouteError
 
-type ValidationFunc func(ctx *fiber.Ctx) error
-type AuthorizationFunc func(ctx *fiber.Ctx) error
+type ValidationFunc func(ctx *fiber.Ctx, r *Route) error
+type AuthorizationFunc func(ctx *fiber.Ctx, r *Route) error
 
 func Error(status int, err error) RouteError {
 	return RouteError{

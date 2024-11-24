@@ -1,49 +1,64 @@
 package httplib
 
 import (
+	"crypto/tls"
 	"fmt"
 	"log/slog"
+	"net"
 
+	"github.com/bytedance/sonic"
 	"github.com/gofiber/fiber/v2"
 	"github.com/gofiber/fiber/v2/middleware/session"
 	slogfiber "github.com/samber/slog-fiber"
+	"github.com/sandrolain/gomsvc/pkg/certlib"
 )
 
 type ServerOptions struct {
 	Logger            *slog.Logger
-	ValidateData      bool
 	ValidationFunc    ValidationFunc
 	AuthorizationFunc AuthorizationFunc
 	ErrorFilterFunc   ErrorFilterFunc
+	TLSConfig         *certlib.ServerTLSConfigFiles `validate:"omitempty"`
 }
 
 type Server struct {
 	app               *fiber.App
 	errorFilter       ErrorFilterFunc
-	validateData      bool
 	validationFunc    ValidationFunc
 	authorizationFunc AuthorizationFunc
 	sessionStore      *session.Store
+	tlsConfig         *tls.Config
 }
 
-func NewServer(config ServerOptions) *Server {
-	server := Server{
-		validateData:      config.ValidateData,
-		validationFunc:    config.ValidationFunc,
-		authorizationFunc: config.AuthorizationFunc,
-		errorFilter:       config.ErrorFilterFunc,
+func NewServer(opts ServerOptions) (res *Server, err error) {
+
+	res = &Server{
+		validationFunc:    opts.ValidationFunc,
+		authorizationFunc: opts.AuthorizationFunc,
+		errorFilter:       opts.ErrorFilterFunc,
 	}
-	server.app = fiber.New(fiber.Config{
-		ErrorHandler: getFiberErrorHandler(&server),
+	res.app = fiber.New(fiber.Config{
+		ErrorHandler: getFiberErrorHandler(res),
+		JSONEncoder:  sonic.Marshal,
+		JSONDecoder:  sonic.Unmarshal,
 	})
 
-	logger := config.Logger
+	if opts.TLSConfig != nil {
+		tlsConfig, e := certlib.LoadServerTLSConfig(*opts.TLSConfig)
+		if e != nil {
+			err = fmt.Errorf("failed to load credentials: %w", e)
+			return
+		}
+		res.tlsConfig = tlsConfig
+	}
+
+	logger := opts.Logger
 	if logger == nil {
 		logger = slog.Default()
 	}
-	server.app.Use(slogfiber.New(logger))
+	res.app.Use(slogfiber.New(logger))
 
-	return &server
+	return
 }
 
 func getFiberErrorHandler(s *Server) func(ctx *fiber.Ctx, err error) error {
@@ -110,14 +125,6 @@ func (s *Server) SessionWith(sessionProvider fiber.Storage) {
 	})
 }
 
-func (s *Server) ListenAddress(addr string) error {
-	return s.app.Listen(addr)
-}
-
-func (s *Server) ListenPort(port int) error {
-	return s.app.Listen(fmt.Sprintf(":%v", port))
-}
-
 func (s *Server) ValidateWith(fn ValidationFunc) *Server {
 	s.validationFunc = fn
 	return s
@@ -128,18 +135,39 @@ func (s *Server) AuthWith(fn AuthorizationFunc) *Server {
 	return s
 }
 
-func (s *Server) Handle(methodPath string, handler Handler) *Route {
-	method, path := parsePath(methodPath)
+func (s *Server) Handle(method string, path string, handler Handler) *Route {
 	r := &Route{
-		server:            s,
-		Method:            method,
-		Path:              path,
-		validationFunc:    s.validationFunc,
-		authorizationFunc: s.authorizationFunc,
+		server: s,
+		method: method,
+		path:   path,
 	}
-	router := r.server.app.Add(r.Method, r.Path, func(ctx *fiber.Ctx) error {
+	router := s.app.Add(r.method, r.path, func(ctx *fiber.Ctx) error {
 		return handler(r, ctx)
 	})
 	r.Router = &router
 	return r
+}
+
+func (s *Server) Route(path string, handler ...func(*Route)) (res *Route) {
+	router := s.app.Group(path)
+	return &Route{
+		server: s,
+		path:   path,
+		Router: &router,
+	}
+}
+
+func (s *Server) Listen(addr string, tlsConfig ...certlib.ServerTLSConfigFiles) (err error) {
+	ln, e := net.Listen("tcp", addr)
+	if e != nil {
+		err = fmt.Errorf("failed to listen: %w", e)
+		return
+	}
+
+	if s.tlsConfig != nil {
+		ln = tls.NewListener(ln, s.tlsConfig)
+	}
+
+	err = s.app.Listener(ln)
+	return
 }

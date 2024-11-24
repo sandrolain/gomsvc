@@ -85,27 +85,29 @@ func loadSession(r *Route, c *fiber.Ctx) (sess *session.Session, err error) {
 }
 
 func authorization(r *Route, c *fiber.Ctx) (err error) {
-	if r.authorizationFunc == nil {
+	fn := r.getAuthorizationFunc()
+	if fn == nil {
 		return
 	}
-	if err = r.authorizationFunc(c); err != nil {
+	if err = fn(c, r); err != nil {
 		err = UnauthorizedError(err)
 	}
 	return
 }
 
 func validation(r *Route, c *fiber.Ctx) (err error) {
-	if r.validationFunc == nil {
+	fn := r.getValidationFunc()
+	if fn == nil {
 		return
 	}
-	if err = r.validationFunc(c); err != nil {
+	if err = fn(c, r); err != nil {
 		err = BadRequestError(err)
 	}
 	return
 }
 
 func dataValidation[T any](r *Route, c *fiber.Ctx, obj *T) (err error) {
-	if !r.server.validateData {
+	if r.noValidateData {
 		return
 	}
 	if err = validator.New().Struct(*obj); err != nil {

@@ -43,10 +43,12 @@ func TestGetJSON(t *testing.T) {
 			handler: http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 				w.Header().Set("Content-Type", "application/json")
 				w.WriteHeader(http.StatusOK)
-				json.NewEncoder(w).Encode(TestResponse{
+				enc := json.NewEncoder(w)
+				_ = enc.Encode(TestResponse{
 					Message: "success",
 					Code:    200,
 				})
+
 			}),
 			expectedStatus: http.StatusOK,
 			expectedBody: &TestResponse{
@@ -58,7 +60,8 @@ func TestGetJSON(t *testing.T) {
 			name: "server error",
 			handler: http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 				w.WriteHeader(http.StatusInternalServerError)
-				json.NewEncoder(w).Encode(TestResponse{
+				enc := json.NewEncoder(w)
+				_ = enc.Encode(TestResponse{
 					Message: "server error",
 					Code:    500,
 				})
@@ -71,7 +74,7 @@ func TestGetJSON(t *testing.T) {
 			handler: http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 				w.Header().Set("Content-Type", "application/json")
 				w.WriteHeader(http.StatusOK)
-				w.Write([]byte("invalid json"))
+				_, _ = w.Write([]byte("invalid json"))
 			}),
 			expectedStatus: http.StatusOK,
 			expectedError:  errors.New("failed to unmarshal response: invalid character 'i' looking for beginning of value"),
@@ -136,7 +139,8 @@ func TestPostJSON(t *testing.T) {
 				}
 				w.Header().Set("Content-Type", "application/json")
 				w.WriteHeader(http.StatusOK)
-				json.NewEncoder(w).Encode(TestResponse{
+				enc := json.NewEncoder(w)
+				_ = enc.Encode(TestResponse{
 					Message: "created",
 					Code:    201,
 				})
@@ -155,7 +159,8 @@ func TestPostJSON(t *testing.T) {
 			name: "bad request",
 			handler: http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 				w.WriteHeader(http.StatusBadRequest)
-				json.NewEncoder(w).Encode(TestResponse{
+				enc := json.NewEncoder(w)
+				_ = enc.Encode(TestResponse{
 					Message: "bad request",
 					Code:    400,
 				})
@@ -217,7 +222,7 @@ func TestGetBytes(t *testing.T) {
 			name: "successful request",
 			handler: http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 				w.WriteHeader(http.StatusOK)
-				w.Write([]byte("test data"))
+				_, _ = w.Write([]byte("test data"))
 			}),
 			expectedStatus: http.StatusOK,
 			expectedBody:   []byte("test data"),

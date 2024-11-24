@@ -71,7 +71,7 @@ tasks:
     desc: Run all checks (fmt, lint, vet, test, security)
     cmds:
       - task: fmt
-      #- task: lint
+      - task: lint
       - task: vet
       - task: test
       - task: gosec

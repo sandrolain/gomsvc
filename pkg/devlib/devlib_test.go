@@ -1,4 +1,4 @@
-package debuglib
+package devlib
 
 import (
 	"testing"

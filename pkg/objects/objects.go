@@ -77,7 +77,7 @@ func (c *Client) PutObjects(ctx context.Context, objects []Object) (infos []mini
 				return
 			}
 			infos[i] = info
-		case o.Data != nil && len(o.Data) > 0:
+		case len(o.Data) > 0:
 			reader := bytes.NewReader(o.Data)
 			objectSize := int64(len(o.Data))
 			info, err = c.MinIO.PutObject(ctx, o.BucketName, o.ObjectName, reader, objectSize, minio.PutObjectOptions{ContentType: o.ContentType})

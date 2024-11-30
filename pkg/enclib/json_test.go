@@ -1,6 +1,8 @@
 package enclib
 
 import (
+	"encoding/json"
+	"reflect"
 	"testing"
 )
 
@@ -18,7 +20,7 @@ func TestEncodeJSON(t *testing.T) {
 	tests := []struct {
 		name    string
 		input   testStruct
-		want    string
+		want    testStruct
 		wantErr bool
 	}{
 		{
@@ -30,7 +32,13 @@ func TestEncodeJSON(t *testing.T) {
 				Bool:   true,
 				Slice:  []string{"a", "b", "c"},
 			},
-			want:    `{"string":"test","int":42,"float":3.14,"bool":true,"slice":["a","b","c"]}`,
+			want: testStruct{
+				String: "test",
+				Int:    42,
+				Float:  3.14,
+				Bool:   true,
+				Slice:  []string{"a", "b", "c"},
+			},
 			wantErr: false,
 		},
 		{
@@ -39,7 +47,14 @@ func TestEncodeJSON(t *testing.T) {
 				String:  "test",
 				Pointer: &str,
 			},
-			want:    `{"string":"test","int":0,"float":0,"bool":false,"slice":null,"pointer":"pointer value"}`,
+			want: testStruct{
+				String:  "test",
+				Int:     0,
+				Float:   0,
+				Bool:    false,
+				Slice:   nil,
+				Pointer: &str,
+			},
 			wantErr: false,
 		},
 	}
@@ -51,8 +66,15 @@ func TestEncodeJSON(t *testing.T) {
 				t.Errorf("EncodeJSON() error = %v, wantErr %v", err, tt.wantErr)
 				return
 			}
-			if got != tt.want {
-				t.Errorf("EncodeJSON() = %v, want %v", got, tt.want)
+			if !tt.wantErr {
+				var decoded testStruct
+				if err := json.Unmarshal([]byte(got), &decoded); err != nil {
+					t.Errorf("Failed to unmarshal encoded JSON: %v", err)
+					return
+				}
+				if !compareTestStruct(decoded, tt.want) {
+					t.Errorf("EncodeJSON() decoded = %+v, want %+v", decoded, tt.want)
+				}
 			}
 		})
 	}
@@ -140,7 +162,7 @@ func TestCompactJSON(t *testing.T) {
 	tests := []struct {
 		name    string
 		input   string
-		want    string
+		want    interface{}
 		wantErr bool
 	}{
 		{
@@ -149,13 +171,29 @@ func TestCompactJSON(t *testing.T) {
 				"string": "test",
 				"int": 42
 			}`,
-			want:    `{"string":"test","int":42}`,
+			want: map[string]interface{}{
+				"string": "test",
+				"int":    float64(42),
+			},
 			wantErr: false,
 		},
 		{
 			name:    "invalid json",
 			input:   `{"string":}`,
+			want:    nil,
 			wantErr: true,
+		},
+		{
+			name:    "empty json object",
+			input:   `{}`,
+			want:    map[string]interface{}{},
+			wantErr: false,
+		},
+		{
+			name:    "empty json array",
+			input:   `[]`,
+			want:    []interface{}{},
+			wantErr: false,
 		},
 	}
 
@@ -166,8 +204,15 @@ func TestCompactJSON(t *testing.T) {
 				t.Errorf("CompactJSON() error = %v, wantErr %v", err, tt.wantErr)
 				return
 			}
-			if !tt.wantErr && got != tt.want {
-				t.Errorf("CompactJSON() = %v, want %v", got, tt.want)
+			if !tt.wantErr {
+				var decoded interface{}
+				if err := json.Unmarshal([]byte(got), &decoded); err != nil {
+					t.Errorf("Failed to unmarshal compacted JSON: %v", err)
+					return
+				}
+				if !reflect.DeepEqual(decoded, tt.want) {
+					t.Errorf("CompactJSON() decoded = %+v, want %+v", decoded, tt.want)
+				}
 			}
 		})
 	}

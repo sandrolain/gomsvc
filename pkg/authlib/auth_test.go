@@ -24,16 +24,23 @@ func setupJWKServer(t *testing.T, key jwk.Key) *httptest.Server {
 
 	return httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
-		json.NewEncoder(w).Encode(set)
+		err := json.NewEncoder(w).Encode(set)
+		require.NoError(t, err)
 	}))
 }
 
 func createTestJWT(t *testing.T, key jwk.Key) string {
 	token := jwt.New()
 	now := time.Now()
-	token.Set(jwt.ExpirationKey, now.Add(time.Hour))
-	token.Set(jwt.IssuedAtKey, now)
-	token.Set(jwt.SubjectKey, "test-subject")
+
+	err := token.Set(jwt.ExpirationKey, now.Add(time.Hour))
+	require.NoError(t, err)
+
+	err = token.Set(jwt.IssuedAtKey, now)
+	require.NoError(t, err)
+
+	err = token.Set(jwt.SubjectKey, "test-subject")
+	require.NoError(t, err)
 
 	signedToken, err := jwt.Sign(token, jwt.WithKey(jwa.RS256, key))
 	require.NoError(t, err)
@@ -220,14 +227,20 @@ func TestTokenExpiration(t *testing.T) {
 
 	// Create two different JWT tokens with different expiration times
 	token1 := jwt.New()
-	token1.Set(jwt.ExpirationKey, time.Now().Add(time.Second))
-	token1.Set(jwt.IssuedAtKey, time.Now())
-	token1.Set(jwt.SubjectKey, "test-1")
+	err := token1.Set(jwt.ExpirationKey, time.Now().Add(time.Second))
+	require.NoError(t, err)
+	err = token1.Set(jwt.IssuedAtKey, time.Now())
+	require.NoError(t, err)
+	err = token1.Set(jwt.SubjectKey, "test-1")
+	require.NoError(t, err)
 
 	token2 := jwt.New()
-	token2.Set(jwt.ExpirationKey, time.Now().Add(time.Hour))
-	token2.Set(jwt.IssuedAtKey, time.Now())
-	token2.Set(jwt.SubjectKey, "test-2")
+	err = token2.Set(jwt.ExpirationKey, time.Now().Add(time.Hour))
+	require.NoError(t, err)
+	err = token2.Set(jwt.IssuedAtKey, time.Now())
+	require.NoError(t, err)
+	err = token2.Set(jwt.SubjectKey, "test-2")
+	require.NoError(t, err)
 
 	signedToken1, err := jwt.Sign(token1, jwt.WithKey(jwa.RS256, raw))
 	require.NoError(t, err)
@@ -251,7 +264,8 @@ func TestTokenExpiration(t *testing.T) {
 
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
-		json.NewEncoder(w).Encode(responses[currentResponse])
+		err := json.NewEncoder(w).Encode(responses[currentResponse])
+		require.NoError(t, err)
 		if currentResponse < len(responses)-1 {
 			currentResponse++
 		}
@@ -307,11 +321,12 @@ func TestRetryLogic(t *testing.T) {
 			w.WriteHeader(http.StatusInternalServerError)
 			return
 		}
-		json.NewEncoder(w).Encode(mockTokenResponse{
+		err := json.NewEncoder(w).Encode(mockTokenResponse{
 			AccessToken: testJWT,
 			ExpiresIn:   3600,
 			TokenType:   "Bearer",
 		})
+		require.NoError(t, err)
 	}))
 	defer server.Close()
 

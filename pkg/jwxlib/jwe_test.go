@@ -6,9 +6,9 @@ import (
 	"testing"
 )
 
-func TestJweEncryptMultiRsa(t *testing.T) {
+func TestJweEncrypt(t *testing.T) {
 	privkeys := make([]*rsa.PrivateKey, 3)
-	pubkeys := make([]*rsa.PublicKey, 3)
+	pubkeys := make([]interface{}, 3)
 
 	for i := range privkeys {
 		var err error
@@ -21,15 +21,15 @@ func TestJweEncryptMultiRsa(t *testing.T) {
 
 	plain := "Lorem ipsum dolor sit amet, consectetur adipiscing elit."
 
-	ct, err := JweEncryptMultiRsa([]byte(plain), pubkeys)
+	ct, err := JweEncrypt([]byte(plain), pubkeys)
 	if err != nil {
 		t.Fatalf("error encrypting JWE: %s", err.Error())
 	}
 
-	t.Logf("ct: %s", ct)
+	t.Logf("ct: %s", string(ct))
 
 	for i, privkey := range privkeys {
-		pt, err := JweDecryptRsa([]byte(ct), privkey)
+		pt, err := JweDecrypt(ct, []interface{}{privkey})
 		if err != nil {
 			t.Fatalf("error decrypting with key %d: %s", i, err)
 		}
@@ -39,7 +39,7 @@ func TestJweEncryptMultiRsa(t *testing.T) {
 	}
 }
 
-func TestJweDecryptRsa(t *testing.T) {
+func TestJweDecrypt(t *testing.T) {
 	privkey, err := rsa.GenerateKey(rand.Reader, 2048)
 	if err != nil {
 		t.Fatal(err.Error())
@@ -47,14 +47,14 @@ func TestJweDecryptRsa(t *testing.T) {
 
 	plain := "Lorem ipsum dolor sit amet, consectetur adipiscing elit."
 
-	ct, err := JweEncryptRsa([]byte(plain), &privkey.PublicKey, false)
+	ct, err := JweEncrypt([]byte(plain), []interface{}{&privkey.PublicKey})
 	if err != nil {
 		t.Fatalf("error encrypting JWE: %s", err.Error())
 	}
 
-	t.Logf("ct: %s", ct)
+	t.Logf("ct: %s", string(ct))
 
-	pt, err := JweDecryptRsa([]byte(ct), privkey)
+	pt, err := JweDecrypt(ct, []interface{}{privkey})
 	if err != nil {
 		t.Fatalf("error decrypting with key: %s", err)
 	}
@@ -62,19 +62,22 @@ func TestJweDecryptRsa(t *testing.T) {
 		t.Errorf("decrypted text mismatch: expected %q, got %q", plain, pt)
 	}
 
-	_, err = JweDecryptRsa([]byte(ct), &rsa.PrivateKey{})
+	wrongKey, _ := rsa.GenerateKey(rand.Reader, 2048)
+	_, err = JweDecrypt(ct, []interface{}{wrongKey})
 	if err == nil {
 		t.Fatal("expected error decrypting with wrong key")
 	}
 
-	ct, err = JweEncryptRsa([]byte(plain), &privkey.PublicKey, true)
+	// Test with a different key
+	anotherKey, _ := rsa.GenerateKey(rand.Reader, 2048)
+	ct, err = JweEncrypt([]byte(plain), []interface{}{&anotherKey.PublicKey})
 	if err != nil {
 		t.Fatalf("error encrypting JWE: %s", err.Error())
 	}
 
-	t.Logf("ct: %s", ct)
+	t.Logf("ct: %s", string(ct))
 
-	pt, err = JweDecryptRsa([]byte(ct), privkey)
+	pt, err = JweDecrypt(ct, []interface{}{anotherKey})
 	if err != nil {
 		t.Fatalf("error decrypting with key: %s", err)
 	}

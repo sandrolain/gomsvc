@@ -1,9 +1,11 @@
 // Package jwxlib provides JWT (JSON Web Token) and JWE (JSON Web Encryption) functionality
-// using the lestrrat-go/jwx/v2 library. The JWE implementation supports RSA encryption
+// using the lestrrat-go/jwx/v2 library. The JWE implementation supports RSA and ECDSA encryption
 // for secure data exchange between parties.
 //
 // Key Features:
-//   - RSA-OAEP encryption and decryption
+//   - RSA-OAEP-256 encryption and decryption
+//   - ECDH-ES with A256KW key wrapping
+//   - AES-256-GCM content encryption
 //   - Support for multiple recipients (multi-key encryption)
 //   - JSON and Compact serialization formats
 //   - Strong security with modern cryptographic algorithms
@@ -16,10 +18,10 @@
 //
 //	// Encrypt data
 //	plaintext := []byte("sensitive data")
-//	ciphertext, err := jwxlib.JweEncryptRsa(plaintext, publicKey, false)
+//	ciphertext, err := jwxlib.JweEncrypt(plaintext, []interface{}{publicKey})
 //
 //	// Decrypt data
-//	decrypted, err := jwxlib.JweDecryptRsa(ciphertext, privateKey)
+//	decrypted, err := jwxlib.JweDecrypt(ciphertext, []interface{}{privateKey})
 //
 // Security Considerations:
 //   - Use RSA keys with at least 2048 bits
@@ -29,6 +31,7 @@
 package jwxlib
 
 import (
+	"crypto/ecdsa"
 	"crypto/rsa"
 	"fmt"
 
@@ -37,120 +40,89 @@ import (
 	"github.com/lestrrat-go/jwx/v2/jwk"
 )
 
-// JweEncryptMultiRsa encrypts plaintext for multiple RSA public keys, allowing
+// JweEncrypt encrypts plaintext for multiple keys, allowing
 // multiple recipients to decrypt the same content with their respective private keys.
 // This is useful in scenarios where the same data needs to be shared with multiple
 // parties while maintaining end-to-end encryption.
 //
-// The function uses RSA-OAEP for key encryption and outputs the result in JSON format,
-// which is more suitable for multiple recipients than the compact format.
+// The function supports:
+//   - RSA keys: Uses RSA-OAEP-256 for key encryption
+//   - ECDSA keys: Uses ECDH-ES with A256KW key wrapping
+//   - Content encryption: AES-256-GCM
+//
+// If multiple keys are provided, the output will be in JSON format, which is more
+// suitable for multiple recipients than the compact format.
 //
 // Parameters:
 //   - plaintext: The data to encrypt
-//   - rsaPubKeys: Array of RSA public keys for the intended recipients
+//   - keys: Array of public keys for the intended recipients (RSA or ECDSA)
 //
 // Returns:
-//   - []byte: The encrypted data in JWE JSON format
+//   - []byte: The encrypted data in JWE JSON or compact format
 //   - error: Any error that occurred during encryption
 //
 // Example:
 //
-//	pubKeys := []*rsa.PublicKey{recipient1.PublicKey, recipient2.PublicKey}
-//	encrypted, err := JweEncryptMultiRsa([]byte("secret"), pubKeys)
+//	pubKeys := []interface{}{recipient1.PublicKey, recipient2.PublicKey}
+//	encrypted, err := JweEncrypt([]byte("secret"), pubKeys)
 //	if err != nil {
 //	    log.Fatal(err)
 //	}
 //
 // Security Considerations:
 //   - Ensure all public keys are from trusted sources
-//   - Verify key lengths are sufficient (2048 bits minimum recommended)
+//   - Verify key lengths are sufficient (2048 bits minimum for RSA)
 //   - Consider the performance impact with large numbers of recipients
-func JweEncryptMultiRsa(plaintext []byte, rsaPubKeys []*rsa.PublicKey) (ciphertext []byte, err error) {
-	pubkeys := make([]jwk.Key, len(rsaPubKeys))
-
-	for i, key := range rsaPubKeys {
-		pubkey, e := jwk.FromRaw(key)
-		if e != nil {
-			err = fmt.Errorf("failed to create jwk: %s", e)
-			return
-		}
-		pubkeys[i] = pubkey
+func JweEncrypt(plaintext []byte, keys []interface{}) (ciphertext []byte, err error) {
+	options := []jwe.EncryptOption{
+		jwe.WithContentEncryption(jwa.A256GCM),
 	}
 
-	options := []jwe.EncryptOption{jwe.WithJSON()}
-	for _, key := range pubkeys {
-		options = append(options, jwe.WithKey(jwa.RSA_OAEP, key))
-	}
-
-	ciphertext, e := jwe.Encrypt(plaintext, options...)
-	if e != nil {
-		err = fmt.Errorf("failed to encrypt: %s", e)
-		return
-	}
-
-	return
-}
-
-// JweEncryptRsa encrypts plaintext using a single RSA public key. The function supports
-// both JSON and Compact serialization formats through the json parameter.
-//
-// The function uses RSA-OAEP for key encryption, which provides strong security
-// and is recommended for new applications.
-//
-// Parameters:
-//   - plaintext: The data to encrypt
-//   - rsaPubKey: RSA public key of the intended recipient
-//   - json: If true, outputs in JSON format; if false, uses compact format
-//
-// Returns:
-//   - []byte: The encrypted data in either JWE JSON or compact format
-//   - error: Any error that occurred during encryption
-//
-// Example:
-//
-//	// Encrypt using compact format
-//	encrypted, err := JweEncryptRsa([]byte("secret"), publicKey, false)
-//
-//	// Encrypt using JSON format
-//	encrypted, err := JweEncryptRsa([]byte("secret"), publicKey, true)
-//
-// Security Considerations:
-//   - Use keys from trusted sources
-//   - Ensure key length is sufficient (2048 bits minimum)
-//   - JSON format is more verbose but supports additional metadata
-//   - Compact format is smaller but supports only one recipient
-func JweEncryptRsa(plaintext []byte, rsaPubKey *rsa.PublicKey, json bool) (ciphertext []byte, err error) {
-	pubkey, e := jwk.FromRaw(rsaPubKey)
-	if e != nil {
-		err = fmt.Errorf("failed to create jwk: %s", e)
-		return
-	}
-
-	options := []jwe.EncryptOption{jwe.WithKey(jwa.RSA_OAEP, pubkey)}
-
-	if json {
+	if len(keys) > 1 {
 		options = append(options, jwe.WithJSON())
 	}
 
-	ciphertext, e = jwe.Encrypt(plaintext, options...)
-	if e != nil {
-		err = fmt.Errorf("failed to encrypt: %s", e)
+	for _, key := range keys {
+		var k jwk.Key
+		var e error
+		var algo jwa.KeyEncryptionAlgorithm
+		switch keyT := key.(type) {
+		case *rsa.PublicKey:
+			k, e = jwk.FromRaw(keyT)
+			algo = jwa.RSA_OAEP_256
+		case *ecdsa.PublicKey:
+			k, e = jwk.FromRaw(keyT)
+			algo = jwa.ECDH_ES_A256KW
+		default:
+			e = fmt.Errorf("unsupported public key type: %T", keyT)
+		}
+		if e != nil {
+			return nil, fmt.Errorf("failed to create jwk: %s", e)
+		}
+		options = append(options, jwe.WithKey(algo, k))
+	}
+
+	ciphertext, err = jwe.Encrypt(plaintext, options...)
+	if err != nil {
+		err = fmt.Errorf("failed to encrypt: %s", err)
 		return
 	}
 
 	return
 }
 
-// JweDecryptRsa decrypts JWE content using an RSA private key. This function can
+// JweDecrypt decrypts JWE content using the given keys. This function can
 // decrypt content in both JSON and compact formats, automatically detecting the
 // correct format.
 //
-// The function supports content encrypted with RSA-OAEP and will fail if the
-// content was encrypted using a different algorithm.
+// The function supports:
+//   - RSA keys: Uses RSA-OAEP-256 for key decryption
+//   - ECDSA keys: Uses ECDH-ES with A256KW key unwrapping
+//   - Content encryption: AES-256-GCM
 //
 // Parameters:
-//   - ciphertext: The encrypted data in either JWE JSON or compact format
-//   - rsaPrivKey: RSA private key for decryption
+//   - ciphertext: The encrypted JWE data (in JSON or compact format)
+//   - keys: Array of private keys to attempt decryption with (RSA or ECDSA)
 //
 // Returns:
 //   - []byte: The decrypted plaintext
@@ -158,29 +130,42 @@ func JweEncryptRsa(plaintext []byte, rsaPubKey *rsa.PublicKey, json bool) (ciphe
 //
 // Example:
 //
-//	decrypted, err := JweDecryptRsa(encrypted, privateKey)
+//	privKeys := []interface{}{recipient1.PrivateKey, recipient2.PrivateKey}
+//	decrypted, err := JweDecrypt(ciphertext, privKeys)
 //	if err != nil {
 //	    log.Fatal(err)
 //	}
-//	fmt.Printf("Decrypted: %s\n", string(decrypted))
 //
 // Security Considerations:
-//   - Protect private keys from unauthorized access
 //   - Validate the source of encrypted content
 //   - Consider key rotation policies
 //   - Handle decryption errors securely without leaking information
-func JweDecryptRsa(ciphertext []byte, rsaPrivKey *rsa.PrivateKey) (plaintext []byte, err error) {
-	privkey, e := jwk.FromRaw(rsaPrivKey)
-	if e != nil {
-		err = fmt.Errorf("failed to create jwk: %s", e)
-		return
+func JweDecrypt(ciphertext []byte, keys []interface{}) (plaintext []byte, err error) {
+	options := []jwe.DecryptOption{}
+
+	for _, key := range keys {
+		var k jwk.Key
+		var e error
+		var algo jwa.KeyEncryptionAlgorithm
+		switch keyT := key.(type) {
+		case *rsa.PrivateKey:
+			k, e = jwk.FromRaw(keyT)
+			algo = jwa.RSA_OAEP_256
+		case *ecdsa.PrivateKey:
+			k, e = jwk.FromRaw(keyT)
+			algo = jwa.ECDH_ES_A256KW
+		default:
+			e = fmt.Errorf("unsupported private key type: %T", keyT)
+		}
+		if e != nil {
+			return nil, fmt.Errorf("failed to create jwk: %s", e)
+		}
+		options = append(options, jwe.WithKey(algo, k))
 	}
 
-	options := []jwe.DecryptOption{jwe.WithKey(jwa.RSA_OAEP, privkey)}
-
-	plaintext, e = jwe.Decrypt(ciphertext, options...)
-	if e != nil {
-		err = fmt.Errorf("failed to decrypt: %s", e)
+	plaintext, err = jwe.Decrypt(ciphertext, options...)
+	if err != nil {
+		err = fmt.Errorf("failed to decrypt: %s", err)
 		return
 	}
 

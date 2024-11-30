@@ -7,7 +7,6 @@
 //   - Automatic token refresh and caching
 //   - JWT token validation and parsing
 //   - Configurable retry mechanism
-//   - Extensible metrics collection
 //   - Context-aware operations
 //
 // Example Usage:
@@ -40,42 +39,10 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/lestrrat-go/jwx/jwt"
+	"github.com/eapache/go-resiliency/retrier"
+	"github.com/lestrrat-go/jwx/v2/jwk"
+	"github.com/lestrrat-go/jwx/v2/jwt"
 )
-
-// ErrTokenFetch represents an error that occurs during token fetching operations.
-// It provides both a descriptive message and the underlying cause of the error,
-// allowing for detailed error handling and logging.
-type ErrTokenFetch struct {
-	Message string // Human-readable error description
-	Cause   error  // The underlying error that caused the failure
-}
-
-func (e *ErrTokenFetch) Error() string {
-	if e.Cause != nil {
-		return fmt.Sprintf("%s: %v", e.Message, e.Cause)
-	}
-	return e.Message
-}
-
-// MetricsHook defines an interface for monitoring token operations.
-// Implementations can track various token-related events for monitoring,
-// alerting, and performance analysis purposes.
-type MetricsHook interface {
-	// OnTokenFetch is called after a token fetch attempt, providing the operation
-	// duration and any error that occurred. This can be used to track latency
-	// and error rates for token fetching operations.
-	OnTokenFetch(duration time.Duration, err error)
-
-	// OnCacheHit is called when a valid token is found in the cache.
-	// This can be used to monitor cache effectiveness and hit rates.
-	OnCacheHit()
-
-	// OnCacheMiss is called when a token needs to be fetched from the
-	// authorization server. This can be used to monitor cache performance
-	// and identify potential issues with token expiration settings.
-	OnCacheMiss()
-}
 
 // RetryConfig defines parameters for retry behavior during token fetching.
 // It allows customization of the retry mechanism to handle temporary failures
@@ -90,20 +57,8 @@ type RetryConfig struct {
 	WaitTime time.Duration
 }
 
-// TokenProvider defines the interface for token operations.
-// This interface allows for different implementations of token management
-// while maintaining a consistent API for token consumers.
-type TokenProvider interface {
-	// GetToken retrieves a valid OAuth token, either from cache or by fetching a new one.
-	// It handles token expiration and refresh automatically.
-	//
-	// The context parameter can be used to cancel long-running operations
-	// or set timeouts for token retrieval.
-	GetToken(ctx context.Context) (string, error)
-}
-
 // TokenCache implements TokenProvider interface and handles caching of OAuth tokens.
-// It provides automatic token refresh, retry logic, and metrics collection.
+// It provides automatic token refresh and retry logic collection.
 // TokenCache is safe for concurrent use by multiple goroutines.
 type TokenCache struct {
 	// Token holds the current OAuth token
@@ -115,19 +70,19 @@ type TokenCache struct {
 	// Config contains the OAuth configuration settings
 	Config OAuthConfig
 
-	// RetryConf specifies the retry behavior for token fetching
-	RetryConf RetryConfig
-
-	// Metrics provides hooks for monitoring token operations
-	Metrics MetricsHook
-
 	// httpClient is used for making HTTP requests to the token endpoint
 	httpClient *http.Client
+
+	jwks         jwk.Set
+	jwkCache     *jwk.Cache
+	JWTExpiresAt time.Time
 }
 
 // OAuthConfig contains the configuration for OAuth client credentials flow.
 // It includes all necessary parameters for token endpoint authentication.
 type OAuthConfig struct {
+	RetryConfig RetryConfig
+
 	// ClientID is the OAuth client identifier
 	ClientID string
 
@@ -142,6 +97,12 @@ type OAuthConfig struct {
 
 	// GrantType specifies the OAuth grant type (defaults to "client_credentials")
 	GrantType string
+
+	MaxAttempts int
+
+	JWKURL string
+
+	JWKExpirationTime time.Duration
 }
 
 // NewTokenCache creates a new TokenCache instance.
@@ -150,28 +111,9 @@ func NewTokenCache(config OAuthConfig) *TokenCache {
 		config.GrantType = "client_credentials"
 	}
 	return &TokenCache{
-		Config: config,
-		RetryConf: RetryConfig{
-			MaxAttempts: 3,
-			WaitTime:    time.Second,
-		},
+		Config:     config,
 		httpClient: &http.Client{},
 	}
-}
-
-// SetHTTPClient allows setting a custom HTTP client.
-func (cache *TokenCache) SetHTTPClient(client *http.Client) {
-	cache.httpClient = client
-}
-
-// SetMetricsHook sets the metrics hook for monitoring.
-func (cache *TokenCache) SetMetricsHook(hook MetricsHook) {
-	cache.Metrics = hook
-}
-
-// SetRetryConfig configures retry behavior.
-func (cache *TokenCache) SetRetryConfig(config RetryConfig) {
-	cache.RetryConf = config
 }
 
 // GetToken handles getting, validating, and caching the JWT token.
@@ -180,76 +122,72 @@ func (cache *TokenCache) SetRetryConfig(config RetryConfig) {
 //
 // The function is thread-safe and can be called concurrently. It uses
 // the provided context for cancellation and timeout control.
-//
-// If metrics collection is enabled, it will report:
-//   - Cache hits/misses
-//   - Token fetch duration
-//   - Token fetch errors
 func (cache *TokenCache) GetToken(ctx context.Context) (string, error) {
 	// If the token is already in cache and it's not expired, return it
 	if cache.Token != "" && time.Now().Before(cache.ExpiresAt) {
-		if cache.Metrics != nil {
-			cache.Metrics.OnCacheHit()
-		}
 		log.Println("Token is valid and in cache")
 		return cache.Token, nil
 	}
 
-	if cache.Metrics != nil {
-		cache.Metrics.OnCacheMiss()
-	}
-
 	// If the token doesn't exist or is expired, get a new one
 	log.Println("Fetching new OAuth token")
-	start := time.Now()
 	token, err := cache.fetchNewTokenWithRetry(ctx)
-	if cache.Metrics != nil {
-		cache.Metrics.OnTokenFetch(time.Since(start), err)
-	}
 	if err != nil {
-		return "", &ErrTokenFetch{Message: "failed to fetch new token", Cause: err}
+		return "", fmt.Errorf("failed to fetch token: %w", err)
+	}
+
+	accessToken := token["access_token"].(string)
+
+	jwkSet, err := cache.FetchJWK(ctx)
+	if err != nil {
+		log.Printf("Error fetching JWK: %v\n", err)
+		return "", err
 	}
 
 	// Decode the JWT token to get the expiration time
-	parsedToken, err := jwt.ParseString(token["access_token"].(string))
+	parsedToken, err := jwt.ParseString(accessToken, jwt.WithKeySet(jwkSet))
 	if err != nil {
-		return "", &ErrTokenFetch{Message: "failed to parse JWT token", Cause: err}
+		return "", fmt.Errorf("error: unable to parse JWT token: %w", err)
 	}
 
 	// Get the expiration time from the JWT claims
 	exp := parsedToken.Expiration()
 	if exp.IsZero() {
-		return "", &ErrTokenFetch{Message: "JWT token has no expiration time"}
+		return "", fmt.Errorf("JWT token has no expiration time")
 	}
 
 	cache.ExpiresAt = exp
-	cache.Token = token["access_token"].(string)
+	cache.Token = accessToken
 
-	return cache.Token, nil
+	return accessToken, nil
 }
 
 // fetchNewTokenWithRetry implements retry logic for token fetching.
 // It attempts to fetch a new token up to MaxAttempts times, waiting
 // WaitTime between attempts. The operation can be cancelled via context.
 func (cache *TokenCache) fetchNewTokenWithRetry(ctx context.Context) (map[string]interface{}, error) {
-	var lastErr error
-	for attempt := 0; attempt < cache.RetryConf.MaxAttempts; attempt++ {
-		select {
-		case <-ctx.Done():
-			return nil, ctx.Err()
-		default:
-			if token, err := cache.fetchNewToken(ctx); err == nil {
-				return token, nil
-			} else {
-				lastErr = err
-				// Wait before retry, unless it's the last attempt
-				if attempt < cache.RetryConf.MaxAttempts-1 {
-					time.Sleep(cache.RetryConf.WaitTime)
-				}
-			}
-		}
+	retryConfig := cache.Config.RetryConfig
+	if retryConfig.MaxAttempts == 0 {
+		retryConfig.MaxAttempts = 1
 	}
-	return nil, fmt.Errorf("all retry attempts failed: %w", lastErr)
+	if retryConfig.WaitTime == 0 {
+		retryConfig.WaitTime = time.Second
+	}
+
+	var token map[string]interface{}
+
+	r := retrier.New(retrier.ConstantBackoff(retryConfig.MaxAttempts, retryConfig.WaitTime), nil)
+	err := r.Run(func() error {
+		var e error
+		token, e = cache.fetchNewToken(ctx)
+		return e
+	})
+
+	if err != nil {
+		return nil, fmt.Errorf("failed to fetch token after %d attempts: %w", retryConfig.MaxAttempts, err)
+	}
+
+	return token, nil
 }
 
 // fetchNewToken retrieves a new token from the authorization server.
@@ -304,4 +242,111 @@ func (cache *TokenCache) fetchNewToken(ctx context.Context) (map[string]interfac
 	}
 
 	return result, nil
+}
+
+// FetchJWK fetches the JWK from Keycloak and caches it
+func (cache *TokenCache) FetchJWK(ctx context.Context) (jwk.Set, error) {
+	url := cache.Config.JWKURL
+
+	if cache.jwkCache == nil {
+		c := jwk.NewCache(ctx)
+
+		err := c.Register(url, jwk.WithMinRefreshInterval(cache.Config.JWKExpirationTime))
+		if err != nil {
+			return nil, fmt.Errorf("error registering JWKS URL: %w", err)
+		}
+
+		jwkSet, err := c.Refresh(ctx, url)
+		if err != nil {
+			return nil, fmt.Errorf("error refreshing JWKS: %w", err)
+		}
+		cache.jwkCache = c
+		cache.jwks = jwkSet
+
+		return cache.jwks, nil
+	}
+
+	return cache.jwkCache.Get(ctx, url)
+}
+
+// VerifyJWT validates a JWT token using the configured JWK set and returns the parsed token and claims.
+//
+// This method performs the following steps:
+// 1. Fetches the JWK set from the configured JWKURL (with caching)
+// 2. Parses and validates the JWT token using the JWK set
+// 3. Extracts both standard and private claims from the token
+//
+// Standard claims extracted include:
+//   - sub (Subject)
+//   - iss (Issuer)
+//   - aud (Audience)
+//   - exp (Expiration Time)
+//   - nbf (Not Before)
+//   - iat (Issued At)
+//   - jti (JWT ID)
+//
+// Parameters:
+//   - ctx: Context for the operation, which can be used for cancellation
+//   - jwtToken: The JWT token string to verify
+//
+// Returns:
+//   - jwt.Token: The parsed JWT token object
+//   - map[string]interface{}: Combined map of standard and private claims
+//   - error: Any error that occurred during verification
+//
+// The method will return an error if:
+//   - JWK set cannot be fetched
+//   - JWT token is invalid or malformed
+//   - Token signature verification fails
+//   - Token validation fails (e.g., expired token)
+func (cache *TokenCache) VerifyJWT(ctx context.Context, jwtToken string) (jwt.Token, map[string]interface{}, error) {
+	jwkSet, err := cache.FetchJWK(ctx)
+	if err != nil {
+		log.Printf("Error fetching JWK: %v\n", err)
+		return nil, nil, err
+	}
+
+	// Parse and verify the JWT
+	token, err := jwt.Parse([]byte(jwtToken), jwt.WithKeySet(jwkSet))
+	if err != nil {
+		log.Printf("Error parsing JWT: %v\n", err)
+		return nil, nil, err
+	}
+
+	err = jwt.Validate(token)
+	if err != nil {
+		log.Printf("JWT validation failed: %v\n", err)
+		return nil, nil, err
+	}
+
+	claims := make(map[string]interface{})
+	// Add standard claims
+	if sub, ok := token.Get(jwt.SubjectKey); ok {
+		claims["sub"] = sub
+	}
+	if iss, ok := token.Get(jwt.IssuerKey); ok {
+		claims["iss"] = iss
+	}
+	if aud, ok := token.Get(jwt.AudienceKey); ok {
+		claims["aud"] = aud
+	}
+	if exp, ok := token.Get(jwt.ExpirationKey); ok {
+		claims["exp"] = exp
+	}
+	if nbf, ok := token.Get(jwt.NotBeforeKey); ok {
+		claims["nbf"] = nbf
+	}
+	if iat, ok := token.Get(jwt.IssuedAtKey); ok {
+		claims["iat"] = iat
+	}
+	if jti, ok := token.Get(jwt.JwtIDKey); ok {
+		claims["jti"] = jti
+	}
+
+	// Add private claims
+	for key, value := range token.PrivateClaims() {
+		claims[key] = value
+	}
+
+	return token, claims, nil
 }

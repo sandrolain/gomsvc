@@ -15,6 +15,7 @@ require (
 	github.com/bufbuild/protovalidate-go v0.7.2
 	github.com/bytedance/sonic v1.12.4
 	github.com/caarlos0/env/v9 v9.0.0
+	github.com/cloudevents/sdk-go/v2 v2.15.2
 	github.com/deckarep/golang-set/v2 v2.6.0
 	github.com/eapache/go-resiliency v1.7.0
 	github.com/eclipse/paho.mqtt.golang v1.4.3

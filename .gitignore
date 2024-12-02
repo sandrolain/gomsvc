@@ -7,3 +7,4 @@ pkg/certlib/*.pem
 coverage.out
 coverage.html
 security-report.json
+trivy-results.json

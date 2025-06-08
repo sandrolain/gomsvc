@@ -15,8 +15,10 @@ type TestConfig struct {
 
 func TestService(t *testing.T) {
 	// Set required environment variables
-	os.Setenv("TEST_VALUE", "test")
-	os.Setenv("LOG_LEVEL", "INFO")
+	err := os.Setenv("TEST_VALUE", "test")
+	assert.NoError(t, err)
+	err = os.Setenv("LOG_LEVEL", "INFO")
+	assert.NoError(t, err)
 
 	done := make(chan bool)
 

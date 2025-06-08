@@ -20,7 +20,7 @@ func TestGetFreePort(t *testing.T) {
 	if err != nil {
 		t.Fatalf("The port %d is not free", port)
 	}
-	listener.Close()
+	_ = listener.Close()
 }
 
 func TestNetworkContainsIP(t *testing.T) {

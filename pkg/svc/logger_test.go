@@ -136,11 +136,12 @@ func TestInitLogger(t *testing.T) {
 			initLogger(tt.env)
 			logger.Info("test message")
 
-			w.Close()
+			err := w.Close()
+			assert.NoError(t, err)
 			os.Stdout = old
 
 			var buf bytes.Buffer
-			_, err := buf.ReadFrom(r)
+			_, err = buf.ReadFrom(r)
 			assert.NoError(t, err)
 			output := buf.String()
 

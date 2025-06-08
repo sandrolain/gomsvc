@@ -120,7 +120,7 @@ func DecodeURL(s string) (string, error) {
 //
 //	EncodeURLComponent("Hello World!") returns "Hello%20World%21"
 func EncodeURLComponent(s string) string {
-	return strings.Replace(url.QueryEscape(s), "+", "%20", -1)
+	return strings.ReplaceAll(url.QueryEscape(s), "+", "%20")
 }
 
 // DecodeURLComponent decodes a URL component string.
@@ -165,7 +165,7 @@ func BuildQueryString(params map[string]string) string {
 		}
 		buf.WriteString(url.QueryEscape(k))
 		buf.WriteByte('=')
-		buf.WriteString(strings.Replace(url.QueryEscape(params[k]), "+", "%20", -1))
+		buf.WriteString(strings.ReplaceAll(url.QueryEscape(params[k]), "+", "%20"))
 	}
 	return buf.String()
 }

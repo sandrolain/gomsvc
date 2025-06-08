@@ -26,11 +26,7 @@ type ClientOptions struct {
 }
 
 func ClientOptionsFromEnvConfig(cfg EnvClientConfig) ClientOptions {
-	return ClientOptions{
-		Uri:      cfg.Uri,
-		Database: cfg.Database,
-		Timeout:  cfg.Timeout,
-	}
+	return ClientOptions(cfg)
 }
 
 type Connection struct {

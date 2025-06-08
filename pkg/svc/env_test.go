@@ -14,8 +14,12 @@ type TestEnvConfig struct {
 
 func TestGetEnv(t *testing.T) {
 	t.Run("success with required field", func(t *testing.T) {
-		os.Setenv("REQUIRED_VALUE", "test")
-		defer os.Unsetenv("REQUIRED_VALUE")
+		err := os.Setenv("REQUIRED_VALUE", "test")
+		assert.NoError(t, err)
+
+		defer func() {
+			_ = os.Unsetenv("REQUIRED_VALUE")
+		}()
 
 		cfg, err := GetEnv[TestEnvConfig]()
 		assert.NoError(t, err)
@@ -24,9 +28,10 @@ func TestGetEnv(t *testing.T) {
 	})
 
 	t.Run("failure with missing required field", func(t *testing.T) {
-		os.Unsetenv("REQUIRED_VALUE")
+		err := os.Unsetenv("REQUIRED_VALUE")
+		assert.NoError(t, err)
 
-		_, err := GetEnv[TestEnvConfig]()
+		_, err = GetEnv[TestEnvConfig]()
 		assert.Error(t, err)
 	})
 }

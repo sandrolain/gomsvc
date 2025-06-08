@@ -51,7 +51,12 @@ func TestClone(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			defer os.RemoveAll(tmpDir)
+			defer func() {
+				err := os.RemoveAll(tmpDir)
+				if err != nil {
+					t.Fatalf("failed to clean up temp dir: %v", err)
+				}
+			}()
 
 			dest, err := Clone(tt.ref, tmpDir)
 			if tt.wantErr {

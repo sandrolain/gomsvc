@@ -88,7 +88,12 @@ func TestGrpcServer_Start(t *testing.T) {
 	if err != nil {
 		t.Fatalf("grpc.Dial returned error: %v", err)
 	}
-	defer conn.Close()
+	defer func() {
+		err := conn.Close()
+		if err != nil {
+			t.Fatalf("conn.Close returned error: %v", err)
+		}
+	}()
 
 	client := g.NewUnitTestServiceClient(conn)
 

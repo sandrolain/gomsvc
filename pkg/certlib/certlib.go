@@ -89,17 +89,17 @@ func validateSubject(subject pkix.Name, certType CertificateType) error {
 	// For CA certificates, require more strict validation
 	if certType == CertificateTypeRootCA || certType == CertificateTypeIntermediateCA {
 		if len(subject.Organization) == 0 {
-			return errors.New("Organization is required for CA certificates")
+			return errors.New("organization is required for CA certificates")
 		}
 		if len(subject.Country) == 0 {
-			return errors.New("Country is required for CA certificates")
+			return errors.New("country is required for CA certificates")
 		}
 	}
 
 	// Validate country code length if provided
 	for _, country := range subject.Country {
 		if len(country) != 2 {
-			return errors.New("Country code must be exactly 2 characters (ISO 3166-1 alpha-2)")
+			return errors.New("country code must be exactly 2 characters (ISO 3166-1 alpha-2)")
 		}
 	}
 

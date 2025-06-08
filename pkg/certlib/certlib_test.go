@@ -29,8 +29,16 @@ func TestGenerateCA(t *testing.T) {
 		_ = os.WriteFile("./root_ca_cert.pem", certBytes, 0644)
 		_ = os.WriteFile("./root_ca_key.pem", keyBytes, 0644)
 
-		defer os.Remove("./root_ca_cert.pem")
-		defer os.Remove("./root_ca_key.pem")
+		defer func() {
+			err := os.Remove("./root_ca_cert.pem")
+			if err != nil {
+				t.Errorf("Failed to remove root_ca_cert.pem: %v", err)
+			}
+			err = os.Remove("./root_ca_key.pem")
+			if err != nil {
+				t.Errorf("Failed to remove root_ca_key.pem: %v", err)
+			}
+		}()
 	})
 
 	ca, err := generateBasicIntermediateCA("Test Intermediate CA", "Test Organization", "US", rootCA, 365*24*time.Hour)
@@ -38,12 +46,32 @@ func TestGenerateCA(t *testing.T) {
 		t.Fatal(err.Error())
 	}
 
-	defer os.Remove("./int_ca_cert.pem")
-	defer os.Remove("./int_ca_key.pem")
-	defer os.Remove("./client_cert.pem")
-	defer os.Remove("./client_key.pem")
-	defer os.Remove("./server_cert.pem")
-	defer os.Remove("./server_key.pem")
+	defer func() {
+		err := os.Remove("./int_ca_cert.pem")
+		if err != nil {
+			t.Errorf("Failed to remove int_ca_cert.pem: %v", err)
+		}
+		err = os.Remove("./int_ca_key.pem")
+		if err != nil {
+			t.Errorf("Failed to remove int_ca_key.pem: %v", err)
+		}
+		err = os.Remove("./client_cert.pem")
+		if err != nil {
+			t.Errorf("Failed to remove client_cert.pem: %v", err)
+		}
+		err = os.Remove("./client_key.pem")
+		if err != nil {
+			t.Errorf("Failed to remove client_key.pem: %v", err)
+		}
+		err = os.Remove("./server_cert.pem")
+		if err != nil {
+			t.Errorf("Failed to remove server_cert.pem: %v", err)
+		}
+		err = os.Remove("./server_key.pem")
+		if err != nil {
+			t.Errorf("Failed to remove server_key.pem: %v", err)
+		}
+	}()
 
 	t.Run("Intermediate CA to File", func(t *testing.T) {
 		certBytes, err := EncodeCertificateToPEM(ca.Cert)
